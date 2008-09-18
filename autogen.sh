@@ -2,7 +2,7 @@
 
 rm -f config.cache acconfig.hpp
 
-aclocal -I ../config			&& \
+aclocal -I build-aux/macros		&& \
 autoheader				&& \
 automake --copy --foreign --add-missing	&& \
 autoconf				&& \

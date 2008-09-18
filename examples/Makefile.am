@@ -1,1 +1,1 @@
-SUBDIRS=0_basic hello
+SUBDIRS=0_basic 
