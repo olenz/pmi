@@ -1,5 +1,6 @@
 #include "pmi/types.hpp"
 #include "pmi/transmit.hpp"
+#include "pmi/exceptions.hpp"
 #include "pmi/worker_internal.hpp"
 
 #include <vector>
@@ -27,6 +28,14 @@ const unsigned int CMD_CREATE = 2;
 const unsigned int CMD_INVOKE = 3;
 const unsigned int CMD_DESTROY = 4;
 const unsigned int CMD_END = 5;
+
+//////////////////////////////////////////////////
+// Status definition
+//////////////////////////////////////////////////
+const unsigned short STATUS_OK = 0;
+const unsigned short STATUS_USER_ERROR = 1;
+const unsigned short STATUS_INTERNAL_ERROR = 2;
+const unsigned short STATUS_OTHER_ERROR = 3;
 
 
 //////////////////////////////////////////////////
@@ -60,6 +69,46 @@ broadcastName(const string &name, const unsigned int length) {
   MPI::COMM_WORLD.Bcast(const_cast<char*>(name.c_str()), length, MPI::CHAR, 0);
   LOG4ESPP_DEBUG(mpilogger, "Controller finished broadcast.");
 }
+
+#ifndef PMI_OPTIMIZE
+void 
+pmi::transmit::
+gatherStatus() {
+  int size = MPI::COMM_WORLD.Get_size();
+  unsigned short allStatus[size];
+  LOG4ESPP_DEBUG(mpilogger, "Controller gathers status of workers.");
+  MPI::COMM_WORLD.Gather(allStatus, 1, MPI::UNSIGNED_SHORT, 
+			 allStatus, 1, MPI::UNSIGNED_SHORT, 0);
+  LOG4ESPP_DEBUG(mpilogger, "Controller gathered status of workers.");
+  for (int i = 1; i < MPI::COMM_WORLD.Get_size(); i++) {
+    if (allStatus[i] != STATUS_OK) {
+      LOG4ESPP_DEBUG(mpilogger, "Controller got status "   \
+		     << allStatus[i] << " from worker "	   \
+		     << i << ".");
+      MPI::Status mpiStatus;
+      MPI::COMM_WORLD.Probe(i, 99, mpiStatus);
+      int length = mpiStatus.Get_count(MPI::CHAR);
+      LOG4ESPP_DEBUG(mpilogger,						\
+		     "Controller waits to get a message of length "	\
+		     << length << " from worker " << i << ".");
+      char s[length];
+      MPI::COMM_WORLD.Recv(s, length, MPI::CHAR, i, 99);
+      string what = s;
+      switch (allStatus[i]) {
+      case STATUS_USER_ERROR:
+	PMI_USER_ERROR(what);
+      case STATUS_INTERNAL_ERROR:
+	PMI_INT_ERROR(what);
+      case STATUS_OTHER_ERROR:
+	PMI_INT_ERROR("other error: " << what);
+      default:
+	PMI_INT_ERROR("unknown status: " << what);
+      }
+    }
+  }
+  LOG4ESPP_INFO(mpilogger, "Controller gathered all OK from workers.");
+}
+#endif
 
 void 
 pmi::transmit::
@@ -109,6 +158,8 @@ endWorkers() {
 // Receive
 //////////////////////////////////////////////////
 
+#ifdef WORKER
+
 const unsigned int*
 receiveCommand() {
   static unsigned int msg[4];
@@ -119,7 +170,7 @@ receiveCommand() {
   }
 
   LOG4ESPP_DEBUG(mpilogger, "Worker " << getWorkerId()	\
-		 << " waiting to receive a command.");
+		 << " waits to receive a command.");
   
   MPI::COMM_WORLD.Bcast(msg, 4, MPI::UNSIGNED, 0);
   LOG4ESPP_INFO(mpilogger, "Worker " << getWorkerId()			\
@@ -127,7 +178,7 @@ receiveCommand() {
 		 << msg[0] << ", "					\
 		 << msg[1] << ", "					\
 		 << msg[2] << ", "					\
-		 << msg[3] << ")"					\
+		 << msg[3] << ")."					\
 		 );
   return msg;
 }
@@ -135,15 +186,36 @@ receiveCommand() {
 string
 receiveName(const unsigned int length) {
   char s[length];
-  LOG4ESPP_DEBUG(mpilogger, "Worker " << getWorkerId()		\
-		 << " waiting to receive a name of length "	\
+  LOG4ESPP_DEBUG(mpilogger, printWorkerId()			\
+		 << "waits to receive a name of length "	\
 		 << length << ".");
   MPI::COMM_WORLD.Bcast(&s, length, MPI::CHAR, 0);
   string name = s;
-  LOG4ESPP_INFO(mpilogger, "Worker " << getWorkerId()		\
-		 << " received name \"" << name << "\"");
+  LOG4ESPP_INFO(mpilogger, printWorkerId()			\
+		<< "received name \"" << name << "\".");
   return name;
 }
+
+#ifndef PMI_OPTIMIZE
+void
+reportOk() {
+  LOG4ESPP_INFO(mpilogger, printWorkerId()		\
+		<< "reports status OK.");
+  MPI::COMM_WORLD.Gather(&STATUS_OK, 1, MPI::UNSIGNED_SHORT, 
+			 0, 0, MPI::UNSIGNED_SHORT, 0);
+}
+
+void
+reportError(const unsigned char status, const string &what) {
+  LOG4ESPP_INFO(mpilogger, printWorkerId()		\
+		<< "reports error status " << status << ".");
+  MPI::COMM_WORLD.Gather(&status, 1, MPI::UNSIGNED_SHORT, 
+			 0, 0, MPI::UNSIGNED_SHORT, 0);
+  LOG4ESPP_INFO(mpilogger, printWorkerId()		\
+		<< "sends error message \"" << what << "\".");
+  MPI::COMM_WORLD.Send(what.c_str(), what.length()+1, MPI::CHAR, 0, 99);
+}
+#endif
 
 bool
 pmi::transmit::
@@ -159,103 +231,48 @@ handleNext() {
 		 << msg[3] << ")"					\
 		 );
 
-  switch (msg[0]) {
-  case CMD_ASSOC_CLASS:
-    name = receiveName(msg[3]);
-    pmi::worker::associateClass(name, msg[1]);
-    break;
-  case CMD_ASSOC_METHOD:
-    name = receiveName(msg[3]);
-    worker::associateMethod(name, msg[2]);
-    break;
-  case CMD_CREATE:
-    worker::create(msg[1], msg[3]);
-    break;
-  case CMD_INVOKE:
-    worker::invoke(msg[1], msg[2], msg[3]);
-    break;
-  case CMD_DESTROY:
-    worker::destroy(msg[1], msg[3]);
-    break;
-  case CMD_END:
-    return false;
-  default:
-    LOG4ESPP_FATAL(mpilogger, "Worker " << getWorkerId()	\
-		   << " cannot handle unknown command code "	\
-		   << msg[0] << ".");
-    // TODO:
-    // internal error (received non-existing command)
-    ;
+#ifndef PMI_OPTIMIZE
+  try {
+#endif
+    switch (msg[0]) {
+    case CMD_ASSOC_CLASS:
+      name = receiveName(msg[3]);
+      pmi::worker::associateClass(name, msg[1]);
+      break;
+    case CMD_ASSOC_METHOD:
+      name = receiveName(msg[3]);
+      worker::associateMethod(name, msg[2]);
+      break;
+    case CMD_CREATE:
+      worker::create(msg[1], msg[3]);
+      break;
+    case CMD_INVOKE:
+      worker::invoke(msg[1], msg[2], msg[3]);
+      break;
+    case CMD_DESTROY:
+      worker::destroy(msg[1], msg[3]);
+      break;
+    case CMD_END:
+      break;
+    default:
+      PMI_INT_ERROR(printWorkerId()				\
+		    << " cannot handle unknown command code "	\
+		    << msg[0] << ".");
+    }
+#ifndef PMI_OPTIMIZE
+  } catch (UserError &er) {
+    reportError(STATUS_USER_ERROR, er.what());
+  } catch (InternalError &er) {
+    reportError(STATUS_INTERNAL_ERROR, er.what());
+  } catch (exception &er) {
+    reportError(STATUS_OTHER_ERROR, er.what());
   }
 
-  return true;
+  reportOk();
+#endif
+
+  return msg[0] != CMD_END;
 }
 
-// #ifndef PMI_OPTIMIZE
-// void
-// pmi::gatherControlMessages(const CommandType &expected) {
-//   if (isWorker()) 
-//     sendControlMessage(expected);
-//   else {
-//     vector<CommandType> allMessages;
-    
-//     LOG4ESPP_INFO(mpilogger, "Controller gathers control messages " << expected);
-//     // gather messages from all workers
-//     mpi::gather(world, expected, allMessages, 0);
-//     LOG4ESPP_DEBUG(mpilogger, "Controller finished gather.");
-    
-//     // compare the messages with the expected message
-//     for (int i = 0; i < allMessages.size(); i++)
-//       if (expected.commandId != (allMessages[i]).commandId) {
-// 	std::ostringstream ostReceived, ostExpected;
-// 	ostReceived << allMessages[i];
-// 	ostExpected << expected;
-// 	throw MismatchedControlMessage(i, ostReceived.str(), 
-// 				       ostExpected.str());
-//       }
-//   }
-// }
+#endif
 
-// void
-// pmi::gatherControlMessages(const string &expected) {
-//   if (isWorker())
-//     sendControlMessage(expected);
-//   else {
-//     vector<string> allMessages;
-    
-    
-//     LOG4ESPP_INFO(mpilogger, "Controller gathers control messages " << expected);
-//     mpi::gather(world, expected, allMessages, 0);
-//     LOG4ESPP_DEBUG(mpilogger, "Controller finished gather.");
-    
-//     // compare the messages with the expected message
-//     for (int i = 0; i < allMessages.size(); i++)
-//       if (expected != allMessages[i])
-// 	throw MismatchedControlMessage(i, allMessages[i], expected);
-//   }
-// }
-  
-
-// // send finish message to the controller
-// // should be executed only by workers
-// void
-// pmi::sendControlMessage(const CommandType &message) {
-//   if (isController()) {
-//     ostringstream ost;
-//     ost << message;
-//     throw ControllerSendsControlMessage(ost.str());
-//   }
-
-//   LOG4ESPP_INFO(mpilogger, "Worker " << getWorkerId() << " sends control message " << message);
-//   mpi::gather(world, message, 0);
-// }
-
-// void
-// pmi::sendControlMessage(const string &message) {
-//   if (isController()) throw ControllerSendsControlMessage(message);
-  
-//   LOG4ESPP_INFO(mpilogger, "Worker " << getWorkerId() << " sends control message " << message);
-//   mpi::gather(world, message, 0);
-// }
-
-// #endif

@@ -2,6 +2,7 @@
 #define _PMI_PARALLELCLASS_HPP
 #include "pmi/types.hpp"
 #include "pmi/transmit.hpp"
+#include "pmi/exceptions.hpp"
 
 #ifdef WORKER
 #include "pmi/worker_func.hpp"
@@ -48,17 +49,17 @@ namespace pmi {
 
     static IdType &associate() {
       if (ID == NOT_ASSOCIATED) {
-	if (NAME == NOT_REGISTERED) {
-	  LOG4ESPP_FATAL(logger, "Controller tried to associate a class that was not registered!");
-	  // TODO:
-	  // throw ClassNotRegistered(CONTROLLER_ID);
-	  // throw exception("controller tried to associate a class that was not registered!");
-	}
+	if (NAME == NOT_REGISTERED)
+	  PMI_USER_ERROR("Controller tried to associate a class that was not registered!");
+
 	ID = generateClassId();
 	
 	LOG4ESPP_INFO(logger, "Controller associates class \"" << NAME << \
 		      "\" with class id " << ID << ".");
 	transmit::associateClass(NAME, ID);
+#ifndef PMI_OPTIMIZE
+	transmit::gatherStatus();
+#endif
       }
       return ID;
     }

@@ -27,12 +27,11 @@ namespace pmi {
     
     void endWorkers();
 
-    // TODO:
-    // #ifndef PMI_OPTIMIZE
-    //     // collect the results of the last operation from all workers
-    //     // check for failure
-    //     void checkResults();
-    // #endif
+#ifndef PMI_OPTIMIZE
+    // collect the results of the last operation from all workers
+    // check for failure
+    void gatherStatus();
+#endif
 #endif
 
 #ifdef WORKER

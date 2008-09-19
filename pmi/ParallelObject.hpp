@@ -6,6 +6,8 @@
 // workers.
 
 #include "pmi/types.hpp"
+#include "pmi/transmit.hpp"
+#include "pmi/exceptions.hpp"
 #include "pmi/controller.hpp"
 #include "pmi/ParallelClass.hpp"
 #include "pmi/ParallelMethod.hpp"
@@ -37,13 +39,10 @@ namespace pmi {
 
   public:
     ParallelObject() {
-      if (isWorker()) {
-	LOG4ESPP_FATAL(logger, printWorkerId()				\
-		       << " tries to create an object of type \""	\
+      if (isWorker())
+	PMI_USER_ERROR(printWorkerId()					\
+		       << "tries to create a parallel object of type \"" \
 		       << PClass::getName() << "\".");
-	// TODO: throw WorkerCreatesObject(PClass::NAME);
-	// throw exception("Worker creates object");
-      }
       
       IdType classId = PClass::associate();
 
@@ -59,24 +58,20 @@ namespace pmi {
       // create the local instance
       objectPtr = new T();
 
-      // TODO:
-      // #ifndef PMI_OPTIMIZE
-      //       transmit::checkResults();
-      // #endif
+#ifndef PMI_OPTIMIZE
+      transmit::gatherStatus();
+#endif
     }
       
     template < void (T::*method)() >
     void invoke() {
-      if (isWorker()) {
-	LOG4ESPP_FATAL(logger,						\
-		       printWorkerId()					\
-		       << " tries to invoke method \""			\
+      if (isWorker())
+	PMI_USER_ERROR(printWorkerId()					\
+		       << "tries to invoke method \""			\
 		       << (ParallelMethod<T,method>::getName())		\
-		       << "\" of object id " << ID			\
-		       << " of class \"" << PClass::getName() << "\".");
-	// TODO: throw WorkerInvokesMethod(PClass::NAME, ParallelMethod<T, method>::NAME, ID);
-	// throw exception("Worker invokes method");
-      }
+		       << "\" of parallel object id " << ID		\
+		       << " of class \"" << PClass::getName()		\
+		       << "\".");
 
       IdType methodId =
 	ParallelMethod<T,method>::associate();
@@ -94,21 +89,17 @@ namespace pmi {
       // invoke the method in the local objectPtr
       (objectPtr->*method)();
 
-      // TODO:
-      // #ifndef PMI_OPTIMIZED
-      //       transmit::invokeConfirm(classId, methodId, ID);
-      // #endif
+#ifndef PMI_OPTIMIZE
+      transmit::gatherStatus();
+#endif
     }
 
     ~ParallelObject() {
-      if (isWorker()) {
-	LOG4ESPP_FATAL(logger, "Worker " << getWorkerId()		\
-		       << " tries to destroy object id " << ID		\
+      if (isWorker())
+	PMI_USER_ERROR(printWorkerId()					\
+		       << "tries to destroy parallel object id " << ID	\
 		       << " of class \"" << PClass::getName()		\
 		       << "\".");
-	// TODO: throw WorkerDestroysObject(PClass::NAME, ID);
-	// throw exception("Worker destroys object");
-      }
 
       if (isWorkersActive()) {
 	IdType classId = PClass::getId();
@@ -125,11 +116,9 @@ namespace pmi {
       // free the objectId
       freeObjectId(ID);
 
-      // TODO:
-      // #ifndef PMI_OPTIMIZED
-      //       if (isWorkersActive())
-      // 	transmit::destroyConfirm(classId, ID);
-      // #endif
+#ifndef PMI_OPTIMIZE
+      transmit::gatherStatus();
+#endif
     }
   };
 }

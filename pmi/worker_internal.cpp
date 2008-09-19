@@ -70,25 +70,20 @@ namespace pmi {
 		const IdType objectId) {
 #ifndef PMI_OPTIMIZE
       // check whether the class has an associated constructorCaller
-      if (classId >= constructorCallers.size()) {
-	// TODO: internal error (constructor not associated)
-	LOG4ESPP_FATAL(logger, printWorkerId()				\
-		       << "does not have a constructorCaller for class id " \
-		       << classId << ".");
-      }
+      if (classId >= constructorCallers.size())
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "does not have a constructorCaller for class id " \
+		      << classId << ".");
       // check whether the object is already defined
-      if (objectId < objects.size() && objects[objectId] != NULL) {
-	// TODO: internal error: object already defined
-	LOG4ESPP_FATAL(logger, printWorkerId()				\
-		       << "has object id " \
-		       << objectId << " already defined.");
-	
-      } else if (objectId >= objects.size()+1) {
-	LOG4ESPP_FATAL(logger, printWorkerId()		\
-		       << ": object id " << objectId	\
-		       << " overshoots (size " << objects.size() \
-		       << ").");
-      }
+      if (objectId < objects.size() && objects[objectId] != NULL)
+	PMI_INT_ERROR(printWorkerId()				\
+		      << "has object id "			\
+		      << objectId << " already defined.");
+      else if (objectId >= objects.size()+1)
+	PMI_INT_ERROR(printWorkerId()				 \
+		      << ": object id " << objectId		 \
+		      << " overshoots (size " << objects.size()	 \
+		      << ").");
 #endif
       LOG4ESPP_INFO(logger, printWorkerId()				\
 		    << "creates an instance of class id "		\

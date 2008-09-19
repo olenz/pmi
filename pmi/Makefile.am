@@ -5,6 +5,7 @@ pkginclude_HEADERS = \
 	types.hpp \
 	transmit.hpp \
 	basic_func.hpp \
+	exceptions.hpp \
 	ParallelMethod.hpp \
 	ParallelClass.hpp \
 	ParallelObject.hpp \
@@ -21,6 +22,7 @@ lib_LTLIBRARIES = libpmi.la
 libpmi_la_SOURCES = \
 	types.cpp \
 	basic_func.cpp \
+	exceptions.cpp \
 	ParallelClass.cpp \
 	ParallelMethod.cpp \
 	ParallelObject.cpp \

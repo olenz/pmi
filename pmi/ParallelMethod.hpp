@@ -1,8 +1,9 @@
 #ifndef _PMI_PARALLELMETHOD_HPP
 #define _PMI_PARALLELMETHOD_HPP
 #include "pmi/types.hpp"
-#include "pmi/ParallelClass.hpp"
 #include "pmi/transmit.hpp"
+#include "pmi/exceptions.hpp"
+#include "pmi/ParallelClass.hpp"
 
 #ifdef WORKER
 #include "pmi/worker_func.hpp"
@@ -49,15 +50,16 @@ namespace pmi {
       if (ID == NOT_ASSOCIATED) {
 	if (NAME == NOT_REGISTERED) {
 	  LOG4ESPP_FATAL(logger, "Controller tried to associate a method that was not registered!");
-	  // TODO:
-	  //	  throw MethodNotRegistered(CONTROLLER_ID);
-	  //throw exception("controller tried to associate a method that was not registered!");
+	  throw UserError("Controller tried to associate a method that was not registered!");
 	}
 	ID = generateMethodId();
 	
 	LOG4ESPP_INFO(logger, "Controller associates method \"" << NAME << \
 		      "\" to method id " << ID << ".");
 	transmit::associateMethod(NAME, ID);
+#ifndef PMI_OPTIMIZE
+	transmit::gatherStatus();
+#endif
       }
       return ID;
     }
