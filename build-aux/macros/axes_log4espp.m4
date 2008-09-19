@@ -8,11 +8,11 @@
 #
 #   And sets the ac variables:
 #
-#     axes_log4cxx
+#     axes_log4espp
 #
 # LAST MODIFICATION
 #
-#   2008-09-17
+#   2008-09-19
 #
 # COPYLEFT
 #
