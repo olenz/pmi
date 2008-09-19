@@ -1,9 +1,9 @@
 #include "ParallelClass.hpp"
 
 namespace pmi {
-  const ClassIdType &generateClassId() {
-    static ClassIdType nextClassId = -1;
+  IdType generateClassId() {
+    static IdType nextClassId = 0;
     nextClassId++;
-    return nextClassId;
+    return nextClassId - 1;
   }
 }

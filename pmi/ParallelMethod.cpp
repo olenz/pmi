@@ -1,9 +1,9 @@
 #include "ParallelMethod.hpp"
 
 namespace pmi {
-  const ClassIdType &generateMethodId() {
-    static MethodIdType nextMethodId = -1;
+  IdType generateMethodId() {
+    static IdType nextMethodId = 0;
     nextMethodId++;
-    return nextMethodId;
+    return nextMethodId - 1;
   }
 }

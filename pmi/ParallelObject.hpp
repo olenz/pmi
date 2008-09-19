@@ -1,113 +1,138 @@
-#ifndef _PMI_CONTROLLER_PARALLELINSTANCE_HPP
-#define _PMI_CONTROLLER_PARALLELINSTANCE_HPP
+#ifndef _PMI_PARALLELOBJECT_HPP
+#define _PMI_PARALLELOBJECT_HPP
 // A ParallelObject represents a parallel instance of a class.
 // To be a able to use it, the parallel instance has to be first
 // registered as a parallel class on the controller as well as on the
 // workers.
 
-#include <iostream>
-#include <string>
+#include "pmi/types.hpp"
+#include "pmi/controller.hpp"
+#include "pmi/ParallelClass.hpp"
+#include "pmi/ParallelMethod.hpp"
 
-#include "workersActive.hpp"
-#include "transmit.hpp"
-#include "ParallelClass.hpp"
-
+#ifdef CONTROLLER
 using namespace pmi;
 
+// macro to define proxy methods
+#define PMI_PROXY_METHOD(method)					\
+  void method() {							\
+    ParallelObject<SubjectClass>::invoke<&SubjectClass::method>();	\
+  }
+
 namespace pmi {
-  const ObjectIdType &generateObjectId();
+  IdType generateObjectId();
+  void freeObjectId(const IdType id);
 
   template < class T >
   class ParallelObject {
-    typedef ParallelClass<T> Class;
-      
+  public:
+    typedef ParallelClass<T> PClass;
+    typedef T SubjectClass;
+
+  private:
     // the Id of the (parallel) instance
-    ObjectIdType objectId;
+    IdType ID;
     // the instance running on the controller
-    T *objectPtr;
+    SubjectClass *objectPtr;
+
   public:
     ParallelObject() {
-      if (isWorker())
-	throw WorkerCreatesObject();
+      if (isWorker()) {
+	LOG4ESPP_FATAL(logger, printWorkerId()				\
+		       << " tries to create an object of type \""	\
+		       << PClass::getName() << "\".");
+	// TODO: throw WorkerCreatesObject(PClass::NAME);
+	// throw exception("Worker creates object");
+      }
+      
+      IdType classId = PClass::associate();
 
-      if (Class::getId() == CLASS_NOT_REGISTERED)
-	throw ClassNotRegistered(getWorkerId());
-	  
-      objectId = generateObjectId();
+      // generate the object ID
+      ID = generateObjectId();
 
-      CommandType command;
-      command.commandId = CREATE;
-      command.classId = Class::getId();
-      command.objectId = objectId;
-#ifndef PMI_OPTIMIZED
-      command.methodId = METHOD_NOT_DEFINED;
-#endif
+      LOG4ESPP_INFO(logger, "Controller creates an instance of class \"" \
+		    << PClass::getName() << "\" (class id " 		\
+		    << PClass::getId() << "), object id is " << ID << ".");
+      // broadcast invoke command
+      transmit::create(classId, ID);
 
-      LOG4ESPP_INFO(logger, "Controller creates an instance of class " << command.classId << \
-	       ", object id is " << command.objectId << ".");
-
-      // broadcast create command
-      broadcast(command);
-
-      // create the local objectPtr 
+      // create the local instance
       objectPtr = new T();
 
-#ifndef PMI_OPTIMIZED
-      gatherControlMessages(command);
-#endif
+      // TODO:
+      // #ifndef PMI_OPTIMIZE
+      //       transmit::checkResults();
+      // #endif
     }
       
     template < void (T::*method)() >
     void invoke() {
-      CommandType command;
-      command.commandId = INVOKE;
-      command.classId = Class::getId();
-      command.methodId = 
-	ParallelMethod<T,method>::getId();
-      command.objectId = objectId;
-	  
-      LOG4ESPP_INFO(logger, "Controller invokes method " << command.methodId\
-	       << " in object " << command.objectId\
-	       << " of class " << command.classId << ".");
+      if (isWorker()) {
+	LOG4ESPP_FATAL(logger,						\
+		       printWorkerId()					\
+		       << " tries to invoke method \""			\
+		       << (ParallelMethod<T,method>::getName())		\
+		       << "\" of object id " << ID			\
+		       << " of class \"" << PClass::getName() << "\".");
+	// TODO: throw WorkerInvokesMethod(PClass::NAME, ParallelMethod<T, method>::NAME, ID);
+	// throw exception("Worker invokes method");
+      }
+
+      IdType methodId =
+	ParallelMethod<T,method>::associate();
+
+      IdType classId = PClass::getId();
+      LOG4ESPP_INFO(logger, "Controller invokes method \""		\
+		    << (ParallelMethod<T,method>::getName())		\
+		    << "\" (method id " << methodId			\
+		    << ") of object id " << ID				\
+		    << " of class \"" << PClass::getName()		\
+		    << "\" (class id " << classId << ").");
       // broadcast invoke command
-      broadcast(command);
-	
+      transmit::invoke(classId, methodId, ID);
+
       // invoke the method in the local objectPtr
       (objectPtr->*method)();
 
-#ifndef PMI_OPTIMIZED
-      gatherControlMessages(command);
-#endif
+      // TODO:
+      // #ifndef PMI_OPTIMIZED
+      //       transmit::invokeConfirm(classId, methodId, ID);
+      // #endif
     }
 
     ~ParallelObject() {
-      CommandType command;
+      if (isWorker()) {
+	LOG4ESPP_FATAL(logger, "Worker " << getWorkerId()		\
+		       << " tries to destroy object id " << ID		\
+		       << " of class \"" << PClass::getName()		\
+		       << "\".");
+	// TODO: throw WorkerDestroysObject(PClass::NAME, ID);
+	// throw exception("Worker destroys object");
+      }
 
-      LOG4ESPP_INFO(logger, "Controller destroys object " << objectId \
-	       << " of class " << Class::getId() << ".");
-
-      if (workersActive) {
-	command.commandId = DESTROY;
-	command.classId = Class::getId();
-	command.objectId = objectId;
-#ifndef PMI_OPTIMIZED
-	command.methodId = METHOD_NOT_DEFINED;
-#endif
-
-	// broadcast destroy command
-	broadcast(command);
-      } else
+      if (isWorkersActive()) {
+	IdType classId = PClass::getId();
+	LOG4ESPP_INFO(logger, "Controller destroys object id " << ID	\
+		      << " of class \"" << PClass::getName()		\
+		      << "\" (class id " << classId << ").");
+	transmit::destroy(classId, ID);
+      } else {
 	LOG4ESPP_DEBUG(logger, "Controller did not broadcast message, as the workers are stopped.");
+      }
 
       // destroy the local instance
       delete objectPtr;
+      // free the objectId
+      freeObjectId(ID);
 
-#ifndef PMI_OPTIMIZED
-      if (workersActive)
-	gatherControlMessages(command);
-#endif
+      // TODO:
+      // #ifndef PMI_OPTIMIZED
+      //       if (isWorkersActive())
+      // 	transmit::destroyConfirm(classId, ID);
+      // #endif
     }
   };
 }
 
-#endif
+#endif /* CONTROLLER */
+#endif /* _PMI_PARALLELOBJECT_HPP */

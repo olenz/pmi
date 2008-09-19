@@ -1,7 +1,9 @@
-#ifndef _PMI_WORKERMAPS_HPP
-#define _PMI_WORKERMAPS_HPP
+#ifndef _MPIPO_WORKER_FUNC_HPP
+#define _MPIPO_WORKER_FUNC_HPP
 
-#include "types.hpp"
+#include "pmi/types.hpp"
+
+#ifdef WORKER
 #include <map>
 
 using namespace std;
@@ -11,16 +13,12 @@ namespace pmi {
   typedef void (*MethodCallerType)(void*);
   typedef void (*DestructorCallerType)(void*);
 
-  typedef map<ClassIdType, ConstructorCallerType> ConstructorCallerMapType;
-  typedef map<MethodIdType, MethodCallerType> MethodCallerMapType;
-  typedef map<ClassIdType, DestructorCallerType> DestructorCallerMapType;
-  typedef map<ObjectIdType, void*> ObjectMapType;
-  
-  extern ConstructorCallerMapType constructorCallers;
-  extern MethodCallerMapType methodCallers;
-  extern DestructorCallerMapType destructorCallers;
-  extern ObjectMapType objects;
+  // construct-on-first-use idioms
+  map<string, ConstructorCallerType> &constructorCallersByName();
+  map<string, MethodCallerType> &methodCallersByName();  
+  map<string, DestructorCallerType> &destructorCallersByName();
 
+  // templates for the different callers 
   template <class T>
   void*
   constructorCallerTemplate() {
@@ -40,6 +38,9 @@ namespace pmi {
     T* ptr = static_cast<T*>(voidPtr);
     (ptr->*methodPtr)();
   }
+
+  bool mainLoop();
 }
+#endif
 
 #endif

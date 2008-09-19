@@ -1,1 +1,1 @@
-SUBDIRS=0_basic 
+SUBDIRS=basic proxy

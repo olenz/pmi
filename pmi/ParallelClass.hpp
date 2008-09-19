@@ -1,73 +1,77 @@
 #ifndef _PMI_PARALLELCLASS_HPP
 #define _PMI_PARALLELCLASS_HPP
+#include "pmi/types.hpp"
+#include "pmi/transmit.hpp"
 
-#include <boost/mpi.hpp>
-
-#include "ParallelMethod.hpp"
+#ifdef WORKER
+#include "pmi/worker_func.hpp"
+#endif
 
 using namespace std;
 using namespace pmi;
 
+// macro to register a class
+#define PMI_REGISTER_CLASS(aClass, name)					\
+  template <>								\
+  string pmi::ParallelClass<aClass>::NAME =				\
+    pmi::ParallelClass<aClass>::registerClass(name);
+  
 namespace pmi {
-  // generate a new (unique) class id
-  const ClassIdType &generateClassId();
+  IdType generateClassId();
 
   // This class registers a parallel class with the Controller
   template < class T >
   class ParallelClass {
-    typedef ParallelClass<T> Self;
-    static ClassIdType ID;
+#ifdef CONTROLLER
+    // store the name of the class
+    static string NAME;
+
+    // store the Id of the class
+    static IdType ID;
+#endif
+
   public:
     // register the class
-    ParallelClass(const string &name) {
-      if (ID != CLASS_NOT_REGISTERED)
-	throw ClassAlreadyRegistered(CONTROLLER_ID, ID, name);
-
-      ID = generateClassId();
-
-      if (isWorker()) {
-	LOG4ESPP_INFO(logger, "Worker " << getWorkerId() << " registers class \"" << ID << "\".");
-	// - register constructorCaller with classId
-	constructorCallers[ID] = constructorCallerTemplate<T>;
-	// - register destructorCaller with classId
-	destructorCallers[ID] = destructorCallerTemplate<T>;
-      } else {
-	LOG4ESPP_INFO(logger, "Controller registers class \"" << ID << "\".");
-      }
-
-
-#ifndef PMI_OPTIMIZE
-      CommandType command;
-      command.commandId = REGISTER_CLASS;
-      command.classId = ID;
-
-      gatherControlMessages(command);
-      gatherControlMessages(name);
+    static const string &registerClass(const string &name) {
+#ifdef WORKER
+      // register constructorCaller with name
+      constructorCallersByName()[name] = constructorCallerTemplate<T>;
+      // register destructorCaller with name
+      destructorCallersByName()[name] = destructorCallerTemplate<T>;
 #endif
-    }
-    
-    template < void (T::*method)() >
-    const Self &registerMethod(const string &name) const {
-      ParallelMethod<T, method> m(name);
-      return *this;
+      return name;
     }
 
-    static const ClassIdType &getId() {
-      if (ID == CLASS_NOT_REGISTERED)
-	throw ClassNotRegistered(CONTROLLER_ID);
-      else return ID;
+#ifdef CONTROLLER
+    static const string &getName() { return NAME; }
+    static IdType &getId() { return ID; }
+
+    static IdType &associate() {
+      if (ID == NOT_ASSOCIATED) {
+	if (NAME == NOT_REGISTERED) {
+	  LOG4ESPP_FATAL(logger, "Controller tried to associate a class that was not registered!");
+	  // TODO:
+	  // throw ClassNotRegistered(CONTROLLER_ID);
+	  // throw exception("controller tried to associate a class that was not registered!");
+	}
+	ID = generateClassId();
+	
+	LOG4ESPP_INFO(logger, "Controller associates class \"" << NAME << \
+		      "\" with class id " << ID << ".");
+	transmit::associateClass(NAME, ID);
+      }
+      return ID;
     }
+#endif
   };
-  
-  template <class T>
-  static const ParallelClass<T> registerClass(const string &name) {
-    return ParallelClass<T>(name);
-  }
 
+#ifdef CONTROLLER
   // Initialize ID
   template < class T >
-  ClassIdType ParallelClass<T>::ID = CLASS_NOT_REGISTERED;
-
+  IdType ParallelClass<T>::ID = NOT_ASSOCIATED;
+  template < class T>
+  string ParallelClass<T>::NAME = NOT_REGISTERED;
+#endif
 }
 
 #endif

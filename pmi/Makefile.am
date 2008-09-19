@@ -3,29 +3,30 @@ SUBDIRS = mpitransmit
 pkginclude_HEADERS = \
 	log4espp.hpp \
 	types.hpp \
-	exceptions.hpp \
 	transmit.hpp \
-	workerMaps.hpp \
-	workersActive.hpp \
+	basic_func.hpp \
 	ParallelMethod.hpp \
 	ParallelClass.hpp \
 	ParallelObject.hpp \
-	common.hpp \
+	controller_func.hpp \
+	worker_func.hpp \
 	controller.hpp \
 	worker.hpp \
 	pmi.hpp
 
+noinst_HEADERS = \
+	worker_internal.hpp 
+
 lib_LTLIBRARIES = libpmi.la 
 libpmi_la_SOURCES = \
 	types.cpp \
-	exceptions.cpp \
-	workerMaps.cpp \
-	workersActive.cpp \
+	basic_func.cpp \
 	ParallelClass.cpp \
 	ParallelMethod.cpp \
 	ParallelObject.cpp \
-	controller.cpp \
-	worker.cpp
+	controller_func.cpp \
+	worker_func.cpp \
+	worker_internal.cpp
 libpmi_la_LIBADD = \
 	mpitransmit/libpmimpi.la
 
