@@ -17,7 +17,18 @@ if test "x$axes_cv_mpi" = "xno"; then
    AC_MSG_ERROR([could not compile an MPI program])
 fi
 
-AXES_LOG4ESPP
+AC_MSG_CHECKING([whether to optimize the code])
+AC_ARG_WITH([optimize],
+   AS_HELP_STRING([--with-optimize], 
+     [optimize the code (deactivates logging and control messages, default: no)]),
+   [pmi_optimize=$withval], [pmi_optimize="no"])
+AC_MSG_RESULT($pmi_optimize)
+if test "x$pmi_optimize" = "xyes"; then
+   AC_DEFINE(PMI_OPTIMIZE,1,[define if PMI shall be optimized])
+   LOG4ESPP_LIBS=""
+else
+   AXES_LOG4ESPP
+fi
 
 CPPFLAGS='-I $(top_srcdir) '"$CPPFLAGS"
 LIBS="$LOG4ESPP_LIBS $MPI_LIBS $LIBS"
