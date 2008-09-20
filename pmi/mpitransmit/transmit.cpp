@@ -102,7 +102,10 @@ gatherStatus() {
       case STATUS_OTHER_ERROR:
 	PMI_INT_ERROR("other error: " << what);
       default:
-	PMI_INT_ERROR("unknown status: " << what);
+	ostringstream ost; 
+	ost << "unknown status: " << what;
+	LOG4ESPP_FATAL(mpilogger, ost.str());
+	throw InternalError(ost.str());
       }
     }
   }
@@ -163,12 +166,6 @@ endWorkers() {
 const unsigned int*
 receiveCommand() {
   static unsigned int msg[4];
-  if (isController()) {
-    // TODO:
-    // throw pmi::ControllerReceives();
-    LOG4ESPP_DEBUG(mpilogger, "Controller tries to receive a command.");
-  }
-
   LOG4ESPP_DEBUG(mpilogger, "Worker " << getWorkerId()	\
 		 << " waits to receive a command.");
   
@@ -255,9 +252,12 @@ handleNext() {
     case CMD_END:
       break;
     default:
-      PMI_INT_ERROR(printWorkerId()				\
-		    << " cannot handle unknown command code "	\
-		    << msg[0] << ".");
+      ostringstream ost; 
+      ost << printWorkerId()
+	  << " cannot handle unknown command code "
+	  << msg[0] << ".";
+      LOG4ESPP_FATAL(mpilogger, ost.str());
+      throw InternalError(ost.str());
     }
 #ifndef PMI_OPTIMIZE
   } catch (UserError &er) {

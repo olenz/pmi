@@ -15,7 +15,7 @@ pmi::generateObjectId() {
     nextObjectId++;
     return nextObjectId - 1;
   } else {
-    IdType id = *freeObjectIds.begin();
+    IdType id = *(freeObjectIds.begin());
     freeObjectIds.erase(id);
     return id;
   }
@@ -23,7 +23,11 @@ pmi::generateObjectId() {
 
 void 
 pmi::freeObjectId(const IdType id) {
-  // TODO: Test whether the id is already free
+#ifndef PMI_OPTIMIZE
+  if (freeObjectIds.find(id) != freeObjectIds.end())
+    PMI_INT_ERROR("Controller tried to free object id " \
+		  << id << " that is already free!");
+#endif
   freeObjectIds.insert(id);
 }
 #endif

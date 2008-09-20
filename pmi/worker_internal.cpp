@@ -3,6 +3,7 @@
 #ifdef WORKER
 
 #include <vector>
+#include "pmi/exceptions.hpp"
 #include "pmi/basic_func.hpp"
 #include "pmi/worker_func.hpp"
 
@@ -17,11 +18,28 @@ namespace pmi {
     vector<void*> objects;
 
     void associateClass(const string &name, const IdType id) {
+      if (constructorCallersByName().find(name) != 
+	  constructorCallersByName().end())
+	PMI_USER_ERROR(printWorkerId()				\
+		       << "has not registered class \"" << name \
+		       << "\" (constructor undefined).");
 #ifndef PMI_OPTIMIZE
-      // TODO:
-      // check whether a Constructor and Destructor exists for the given name
-      // otherwise: user error (class not registered)
-
+      if (destructorCallersByName().find(name) != destructorCallersByName().end())
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "has not registered class \"" << name		\
+		      << "\" (constructur defined, but destructor undefined).");
+      // check whether the vector has the right size
+      if (constructorCallers.size() != id)
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "has " << constructorCallers.size()		\
+		      << " associated constructors, but received id "	\
+		      << id << " as the next id.");
+      // check whether the vector has the right size
+      if (destructorCallers.size() != id)
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "has " << destructorCallers.size()		\
+		      << " associated destructors, but received id "	\
+		      << id << " as the next id.");
 #endif
       LOG4ESPP_INFO(logger, printWorkerId()			\
 		    << "associates class \""			\
@@ -33,18 +51,20 @@ namespace pmi {
       DestructorCallerType dc = destructorCallersByName()[name];
       destructorCallers.push_back(dc); 
       destructorCallersByName().erase(name);
-#ifndef PMI_OPTIMIZE
-      // TODO:
-      // check whether the id is identical to the size of the both maps
-      // otherwise: internal error (expected id, but got id)
-#endif
     }
 
     void associateMethod(const string &name, const IdType id) {
+      if (methodCallersByName().find(name) != methodCallersByName().end())
+	PMI_USER_ERROR(printWorkerId()					\
+		       << "has not registered method \"" << name	\
+		       << "\" (methodCaller undefined).");
 #ifndef PMI_OPTIMIZE
-      // TODO:
-      // check whether a methodCaller exists for the given name
-      // otherwise: user error (method not registered)
+      // check whether the vector has the right size
+      if (methodCallers.size() != id)
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "has " << methodCallers.size()			\
+		      << " associated methods, but received id "	\
+		      << id << " as the next id.");
 #endif
       LOG4ESPP_INFO(logger, printWorkerId()			\
 		    << "associates method \""			\
@@ -53,17 +73,6 @@ namespace pmi {
       MethodCallerType mc = methodCallersByName()[name];
       methodCallers.push_back(mc);
       methodCallersByName().erase(name);
-#ifndef PMI_OPTIMIZE
-      // check whether the vector has the right size
-      if (id != methodCallers.size()-1) {
-	// TODO:
-	// check whether the id is identical to the size of the both maps
-	// internal error (Id error)
-      }
-      if (methodCallers[id] != mc) {
-	// otherwise: internal error (expected id but got id)
-      }
-#endif
     }
     
     void create(const IdType classId, 
@@ -102,14 +111,14 @@ namespace pmi {
 		const IdType objectId) {
 #ifndef PMI_OPTIMIZE
       // check whether the method has an associated methodCaller
-      if (methodId >= methodCallers.size()) {
-	// TODO: internal error (method not associated)
-      }
-      // check if the object is defined
-      if (objectId >= objects.size() || objects[objectId] == NULL) {
-	// TODO: internal error (object not initialized)
-      }
-      
+      if (methodId >= methodCallers.size())
+	PMI_INT_ERROR(printWorkerId()				       \
+		      << "does not have a methodCaller for method id " \
+		      << methodId << ".");
+      if (objectId >= objects.size() || objects[objectId] == NULL)
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "does not have an initialized object at object id " \
+		      << objectId << " (invoke).");
       // TODO: check if object is of the right class
 #endif
       // call method
@@ -128,14 +137,15 @@ namespace pmi {
 	    const IdType objectId) {
 #ifndef PMI_OPTIMIZE
       // check whether the class has an associated constructorCaller
-      if (classId >= destructorCallers.size()) {
-	// TODO: internal error (destructor not associated)
-      }
+      if (classId >= destructorCallers.size())
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "does not have a destructorCaller for class id " \
+		      << classId << ".");
       // check if the object is defined
       if (objectId >= objects.size() || objects[objectId] == NULL) {
-	// TODO: internal error (object not initialized)
-      }
-
+	PMI_INT_ERROR(printWorkerId()					\
+		      << "does not have an initialized object at object id " \
+		      << objectId << " (destroy).");
       // TODO: check if object is of the right class
 #endif
       // delete object

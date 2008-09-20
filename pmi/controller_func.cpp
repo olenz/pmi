@@ -1,6 +1,7 @@
 // Implements the broadcast
 #include "pmi/controller_func.hpp"
 #include "pmi/transmit.hpp"
+#include "pmi/exceptions.hpp"
 
 #include <vector>
 #include <iostream>
@@ -14,18 +15,12 @@ pmi::isWorkersActive() { return workersActive; }
 
 void 
 pmi::endWorkers() {
-  if (isWorker()) {
-    LOG4ESPP_FATAL(logger, "Worker " << getWorkerId()	\
-		   << " tries to end workers!");
-    // TODO: throw exception
-    // throw exception();
-  }
+  if (isWorker())
+    PMI_USER_ERROR(printWorkerId() << "tries to end workers.");
   LOG4ESPP_INFO(logger, "Controller ends all workers.");
   transmit::endWorkers();
   workersActive = false;
-
-  // TODO:
-  // #ifndef PMI_OPTIMIZE
-  //   broadcaster::stopWorkersConfirm();
-  // #endif
+#ifndef PMI_OPTIMIZE
+  transmit::gatherStatus();
+#endif
 }

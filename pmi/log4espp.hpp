@@ -118,7 +118,6 @@ using namespace log4cxx::helpers;
 #elif defined(LOG4ESPP_USE_GENERIC)
 
 #include <iostream>
-#include <iostream>
 #include <ctype.h>
 
 class LogClass {
