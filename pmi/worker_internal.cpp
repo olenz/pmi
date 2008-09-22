@@ -18,33 +18,33 @@ namespace pmi {
     vector<void*> objects;
 
     void associateClass(const string &name, const IdType id) {
-      if (constructorCallersByName().find(name) != 
+      if (constructorCallersByName().find(name) == 
 	  constructorCallersByName().end())
 	PMI_USER_ERROR(printWorkerId()				\
 		       << "has not registered class \"" << name \
 		       << "\" (constructor undefined).");
 #ifndef PMI_OPTIMIZE
-      if (destructorCallersByName().find(name) != destructorCallersByName().end())
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "has not registered class \"" << name		\
-		      << "\" (constructur defined, but destructor undefined).");
+      if (destructorCallersByName().find(name) == destructorCallersByName().end())
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "has not registered class \"" << name		\
+		       << "\" (constructur defined, but destructor undefined).");
       // check whether the vector has the right size
       if (constructorCallers.size() != id)
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "has " << constructorCallers.size()		\
-		      << " associated constructors, but received id "	\
-		      << id << " as the next id.");
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "has " << constructorCallers.size()		\
+		       << " associated constructors, but received id "	\
+		       << id << " as the next id.");
       // check whether the vector has the right size
       if (destructorCallers.size() != id)
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "has " << destructorCallers.size()		\
-		      << " associated destructors, but received id "	\
-		      << id << " as the next id.");
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "has " << destructorCallers.size()		\
+		       << " associated destructors, but received id "	\
+		       << id << " as the next id.");
 #endif
       LOG4ESPP_INFO(logger, printWorkerId()			\
 		    << "associates class \""			\
 		    << name << "\" to class id " << id << ".");
-
+      
       ConstructorCallerType cc = constructorCallersByName()[name];
       constructorCallers.push_back(cc);
       constructorCallersByName().erase(name);
@@ -52,24 +52,24 @@ namespace pmi {
       destructorCallers.push_back(dc); 
       destructorCallersByName().erase(name);
     }
-
+    
     void associateMethod(const string &name, const IdType id) {
-      if (methodCallersByName().find(name) != methodCallersByName().end())
+      if (methodCallersByName().find(name) == methodCallersByName().end())
 	PMI_USER_ERROR(printWorkerId()					\
 		       << "has not registered method \"" << name	\
 		       << "\" (methodCaller undefined).");
 #ifndef PMI_OPTIMIZE
       // check whether the vector has the right size
       if (methodCallers.size() != id)
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "has " << methodCallers.size()			\
-		      << " associated methods, but received id "	\
-		      << id << " as the next id.");
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "has " << methodCallers.size()		\
+		       << " associated methods, but received id "	\
+		       << id << " as the next id.");
 #endif
       LOG4ESPP_INFO(logger, printWorkerId()			\
-		    << "associates method \""			\
+		    << "associates method \""				\
 		    << name << "\" to method id " << id << ".");
-
+      
       MethodCallerType mc = methodCallersByName()[name];
       methodCallers.push_back(mc);
       methodCallersByName().erase(name);
@@ -80,24 +80,25 @@ namespace pmi {
 #ifndef PMI_OPTIMIZE
       // check whether the class has an associated constructorCaller
       if (classId >= constructorCallers.size())
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "does not have a constructorCaller for class id " \
-		      << classId << ".");
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "does not have a constructorCaller for class id " \
+		       << classId << ".");
       // check whether the object is already defined
-      if (objectId < objects.size() && objects[objectId] != NULL)
-	PMI_INT_ERROR(printWorkerId()				\
-		      << "has object id "			\
-		      << objectId << " already defined.");
-      else if (objectId >= objects.size()+1)
-	PMI_INT_ERROR(printWorkerId()				 \
-		      << ": object id " << objectId		 \
-		      << " overshoots (size " << objects.size()	 \
-		      << ").");
+      if (objectId < objects.size() && objects[objectId] != NULL) {
+	PMI_INTL_ERROR(printWorkerId()				\
+		       << "has object id "			\
+		       << objectId << " already defined.");
+      } else if (objectId >= objects.size()+1) {
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << ": object id " << objectId			\
+		       << " overshoots (size " << objects.size()	\
+		       << ").");
+      }
 #endif
       LOG4ESPP_INFO(logger, printWorkerId()				\
 		    << "creates an instance of class id "		\
 		    << classId << ", object id is " << objectId << ".");
-
+      
       // create object
       ConstructorCallerType cc = constructorCallers[classId];
       if (objectId == objects.size())
@@ -112,13 +113,13 @@ namespace pmi {
 #ifndef PMI_OPTIMIZE
       // check whether the method has an associated methodCaller
       if (methodId >= methodCallers.size())
-	PMI_INT_ERROR(printWorkerId()				       \
-		      << "does not have a methodCaller for method id " \
-		      << methodId << ".");
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "does not have a methodCaller for method id " \
+		       << methodId << ".");
       if (objectId >= objects.size() || objects[objectId] == NULL)
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "does not have an initialized object at object id " \
-		      << objectId << " (invoke).");
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "does not have an initialized object at object id " \
+		       << objectId << " (invoke).");
       // TODO: check if object is of the right class
 #endif
       // call method
@@ -126,7 +127,7 @@ namespace pmi {
 		    << "invokes method id " << methodId			\
 		    << " of object id " << objectId			\
 		    << " of class id " << classId << ".");
-
+      
       void* voidPtr = objects[objectId];
       MethodCallerType mc = methodCallers[methodId];
       (*mc)(voidPtr);
@@ -138,21 +139,21 @@ namespace pmi {
 #ifndef PMI_OPTIMIZE
       // check whether the class has an associated constructorCaller
       if (classId >= destructorCallers.size())
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "does not have a destructorCaller for class id " \
-		      << classId << ".");
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "does not have a destructorCaller for class id " \
+		       << classId << ".");
       // check if the object is defined
-      if (objectId >= objects.size() || objects[objectId] == NULL) {
-	PMI_INT_ERROR(printWorkerId()					\
-		      << "does not have an initialized object at object id " \
-		      << objectId << " (destroy).");
+      if (objectId >= objects.size() || objects[objectId] == NULL)
+	PMI_INTL_ERROR(printWorkerId()					\
+		       << "does not have an initialized object at object id " \
+		       << objectId << " (destroy).");
       // TODO: check if object is of the right class
 #endif
       // delete object
       LOG4ESPP_INFO(logger, printWorkerId()				\
 		    << "destroys object id " << objectId		\
 		    << " of class id " << classId << ".");
-
+      
       void* voidPtr = objects[objectId];
       DestructorCallerType dc = destructorCallers[classId];
       (*dc)(voidPtr);

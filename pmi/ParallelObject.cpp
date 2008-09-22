@@ -25,8 +25,8 @@ void
 pmi::freeObjectId(const IdType id) {
 #ifndef PMI_OPTIMIZE
   if (freeObjectIds.find(id) != freeObjectIds.end())
-    PMI_INT_ERROR("Controller tried to free object id " \
-		  << id << " that is already free!");
+    PMI_INTL_ERROR("Controller tried to free object id "	\
+		   << id << " that is already free!");
 #endif
   freeObjectIds.insert(id);
 }

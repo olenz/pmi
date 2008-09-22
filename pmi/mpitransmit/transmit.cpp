@@ -98,9 +98,9 @@ gatherStatus() {
       case STATUS_USER_ERROR:
 	PMI_USER_ERROR(what);
       case STATUS_INTERNAL_ERROR:
-	PMI_INT_ERROR(what);
+	PMI_INTL_ERROR(what);
       case STATUS_OTHER_ERROR:
-	PMI_INT_ERROR("other error: " << what);
+	PMI_INTL_ERROR("other error: " << what);
       default:
 	ostringstream ost; 
 	ost << "unknown status: " << what;

@@ -8,7 +8,7 @@
 
 using namespace std;
 
-#define PMI_INT_ERROR(output)			\
+#define PMI_INTL_ERROR(output)			\
   {						\
     ostringstream ost; ost << output;		\
     LOG4ESPP_FATAL(logger, ost.str());		\

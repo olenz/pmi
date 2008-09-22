@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <pmi/pmi.hpp>
+#include <pmi/log4espp.hpp>
 #include <mpi.h>
 
 using namespace std;
