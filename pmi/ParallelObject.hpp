@@ -43,6 +43,9 @@ namespace pmi {
 	PMI_USER_ERROR(printWorkerId()					\
 		       << "tries to create a parallel object of type \"" \
 		       << PClass::getName() << "\".");
+      if (!isWorkersActive())
+	PMI_USER_ERROR("Controller tries to create a parallel object of type \"" \
+		       << "\", but the workers have been terminated.");
       
       IdType classId = PClass::associate();
 
@@ -72,6 +75,13 @@ namespace pmi {
 		       << "\" of parallel object id " << ID		\
 		       << " of class \"" << PClass::getName()		\
 		       << "\".");
+
+      if (!isWorkersActive())
+	PMI_USER_ERROR("Controller tries to invoke method \""		\
+		       << (ParallelMethod<T,method>::getName())		\
+		       << "\" of parallel object id " << ID		\
+		       << " of class \"" << PClass::getName()		\
+		       << "\", but the workers have been terminated.");
 
       IdType methodId =
 	ParallelMethod<T,method>::associate();
