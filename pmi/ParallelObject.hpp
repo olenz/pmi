@@ -108,7 +108,7 @@ namespace pmi {
 		      << "\" (class id " << classId << ").");
 	transmit::destroy(classId, ID);
       } else {
-	LOG4ESPP_DEBUG(logger, "Controller did not broadcast message, as the workers are stopped.");
+	LOG4ESPP_DEBUG(logger, "Controller did not broadcast destroy message, as the workers are stopped.");
       }
 
       // destroy the local instance
@@ -117,7 +117,11 @@ namespace pmi {
       freeObjectId(ID);
 
 #ifndef PMI_OPTIMIZE
-      transmit::gatherStatus();
+      if (isWorkersActive()) {
+	transmit::gatherStatus();
+      } else {
+	LOG4ESPP_DEBUG(logger, "Controller did not gather status after destroy, as the workers are stopped.");
+      }
 #endif
     }
   };
