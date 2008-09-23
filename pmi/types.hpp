@@ -12,7 +12,7 @@
 #define WORKER 1
 #endif
 
-LOG4ESPP_DECL_LOGGER(logger);
+extern LOG4ESPP_DECL_LOGGER(logger);
 
 namespace pmi {
   // class required to call class initializers
