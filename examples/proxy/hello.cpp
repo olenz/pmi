@@ -28,7 +28,7 @@ class PHelloWorld
   : public pmi::ParallelObject<HelloWorld> {
 public:
   // define its methods
-  PMI_PROXY_METHOD(printMessage);
+  PMI_PARALLEL_PROXY_METHOD(printMessage);
 };
 
 int main(int argc, char* argv[]) {
@@ -36,6 +36,7 @@ int main(int argc, char* argv[]) {
   MPI::Init(argc, argv);
   // Required by the logging system
   LOG4ESPP_CONFIGURE();
+  LOG4ESPP_DEFINITION();
 
   if (!pmi::mainLoop()) {
     // Create an instance of the proxy class

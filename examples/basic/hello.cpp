@@ -32,6 +32,7 @@ int main(int argc, char* argv[]) {
   MPI::Init(argc, argv);
   // Required by the logging system
   LOG4ESPP_CONFIGURE();
+  LOG4ESPP_DEFINITION();
 
   // mainLoop will return "false" only on the controller
   if (!pmi::mainLoop()) {
