@@ -36,7 +36,6 @@ LIBS="$LOG4ESPP_LIBS $MPI_LIBS $LIBS"
 AC_CONFIG_HEADERS([acconfig.hpp])
 AC_CONFIG_FILES([Makefile \
 		pmi/Makefile \
-		pmi/mpitransmit/Makefile \
 		examples/Makefile \
 		examples/basic/Makefile \
 		examples/proxy/Makefile \
