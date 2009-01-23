@@ -35,10 +35,12 @@ LIBS="$LOG4ESPP_LIBS $MPI_LIBS $LIBS"
 
 AC_CONFIG_HEADERS([acconfig.hpp])
 AC_CONFIG_FILES([Makefile \
+		logging/Makefile \
 		pmi/Makefile \
 		examples/Makefile \
 		examples/basic/Makefile \
 		examples/proxy/Makefile \
+		examples/two_methods/Makefile \
 		])
 
 AC_OUTPUT

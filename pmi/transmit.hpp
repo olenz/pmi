@@ -14,6 +14,8 @@ namespace pmi {
     
   namespace transmit {
 #ifdef CONTROLLER
+    void endWorkers();
+
     void associateClass(const string &name, const IdType id);
     void associateMethod(const string &name, const IdType id);
     
@@ -24,8 +26,8 @@ namespace pmi {
 		const IdType objectId);
     void destroy(const IdType classId,
 		 const IdType objectId);
-    
-    void endWorkers();
+    void broadcastObject(const IdType classId,
+			 const IdType objectId);
 
 #ifndef PMI_OPTIMIZE
     // collect the results of the last operation from all workers

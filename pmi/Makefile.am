@@ -1,5 +1,4 @@
 pkginclude_HEADERS = \
-	log4espp.hpp \
 	types.hpp \
 	transmit.hpp \
 	basic_func.hpp \

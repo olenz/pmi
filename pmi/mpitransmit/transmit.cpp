@@ -22,12 +22,13 @@ pmi::getWorkerId() {
 //////////////////////////////////////////////////
 // Command definition
 //////////////////////////////////////////////////
-const unsigned int CMD_ASSOC_CLASS = 0;
-const unsigned int CMD_ASSOC_METHOD = 1;
-const unsigned int CMD_CREATE = 2;
-const unsigned int CMD_INVOKE = 3;
-const unsigned int CMD_DESTROY = 4;
-const unsigned int CMD_END = 5;
+const unsigned int CMD_END = 0;
+const unsigned int CMD_ASSOC_CLASS = 1;
+const unsigned int CMD_ASSOC_METHOD = 2;
+const unsigned int CMD_CREATE = 3;
+const unsigned int CMD_INVOKE = 4;
+const unsigned int CMD_DESTROY = 5;
+const unsigned int CMD_BROADCAST_OBJECT = 6;
 
 //////////////////////////////////////////////////
 // Status definition
@@ -36,7 +37,6 @@ const unsigned short STATUS_OK = 0;
 const unsigned short STATUS_USER_ERROR = 1;
 const unsigned short STATUS_INTERNAL_ERROR = 2;
 const unsigned short STATUS_OTHER_ERROR = 3;
-
 
 //////////////////////////////////////////////////
 // Broadcasts
@@ -115,6 +115,12 @@ gatherStatus() {
 
 void 
 pmi::transmit::
+endWorkers() {
+  broadcastCommand(CMD_END, NOT_DEFINED, NOT_DEFINED, NOT_DEFINED);
+}
+
+void 
+pmi::transmit::
 associateClass(const string &name, const IdType id) {
   unsigned int l = name.length()+1;
   broadcastCommand(CMD_ASSOC_CLASS, id, NOT_DEFINED, l);
@@ -150,12 +156,11 @@ destroy(const IdType classId, const IdType objectId) {
   broadcastCommand(CMD_DESTROY, classId, NOT_DEFINED, objectId);
 }
 
-void 
+void
 pmi::transmit::
-endWorkers() {
-  broadcastCommand(CMD_END, NOT_DEFINED, NOT_DEFINED, NOT_DEFINED);
+broadcastObject(const IdType classId, const IdType objectId) {
+  broadcastCommand(CMD_BROADCAST_OBJECT, classId, NOT_DEFINED, objectId);
 }
-
 
 //////////////////////////////////////////////////
 // Receive
@@ -232,6 +237,8 @@ handleNext() {
   try {
 #endif
     switch (msg[0]) {
+    case CMD_END:
+      break;
     case CMD_ASSOC_CLASS:
       name = receiveName(msg[3]);
       pmi::worker::associateClass(name, msg[1]);
@@ -249,7 +256,15 @@ handleNext() {
     case CMD_DESTROY:
       worker::destroy(msg[1], msg[3]);
       break;
-    case CMD_END:
+    case CMD_BROADCAST_OBJECT:
+      {
+	ostringstream ost; 
+	ost << printWorkerId()
+	    << " cannot handle broadcast object command in main loop (" 
+	    << msg[1] << ", " << msg[3] << ").";
+	LOG4ESPP_FATAL(mpilogger, ost.str());
+	throw UserError(ost.str());
+      }
       break;
     default:
       ostringstream ost; 

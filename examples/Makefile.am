@@ -1,1 +1,1 @@
-SUBDIRS=basic proxy
+SUBDIRS=basic proxy #two_methods

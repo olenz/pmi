@@ -22,7 +22,7 @@ using namespace std;
 
 // #ifdef WORKER
 // #define PMI_REGISTER_METHOD(name, aClass, aMethodController, aMethodWorker, returnType) \
-//   PMI_REGISTER_METHOD_SPMD(name, aClas, aMethod, void)
+//   PMI_REGISTER_METHOD_SPMD(name, aClass, aMethod, void)
 //   #else
 // #endif
 

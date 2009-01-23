@@ -158,6 +158,22 @@ namespace pmi {
 #endif
     }
 
+    void broadcastObject() {
+      if (isWorker()) 
+	// this will usually fail, as we cannot expect to have PMI
+	// listen on the controller side 
+	PMI_USER_ERROR(printWorkerId()					\
+		       << "tries to broadcast parallel object id " << ID \
+		       << " of class \"" << PClass::getName()		\
+		       << "\".");
+      
+      IdType classId = PClass::getId();
+      LOG4ESPP_INFO(logger, "Controller broadcasts object id " << ID	\
+		       << " of class \"" << PClass::getName()		\
+		       << "\".");
+      transmit::broadcastObject(classId, ID);
+    }
+
     ~ParallelObject() {
       if (isWorker())
 	PMI_USER_ERROR(printWorkerId()					\

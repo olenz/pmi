@@ -27,4 +27,11 @@ pmi::printWorkerId() {
   }
 }
 
+template < class T >
+void broadcastObject(T*& ptr) {
+  if (isController()) {
+    
+  } else {
+  }
+}
 
