@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
   // mainLoop will return "false" only on the controller
   if (!pmi::mainLoop()) {
     // Create a parallel instance of the object
-    pmi::ParallelObject<HelloWorld> hello;
+    pmi::ParallelClass<HelloWorld> hello;
     
     // Call both void methods of the object
     hello.invokeVoid<&HelloWorld::printMessage>();

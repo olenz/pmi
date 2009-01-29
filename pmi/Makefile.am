@@ -5,7 +5,6 @@ pkginclude_HEADERS = \
 	exceptions.hpp \
 	ParallelMethod.hpp \
 	ParallelClass.hpp \
-	ParallelObject.hpp \
 	controller_func.hpp \
 	worker_func.hpp \
 	controller.hpp \
@@ -22,7 +21,6 @@ libpmi_la_SOURCES = \
 	exceptions.cpp \
 	ParallelClass.cpp \
 	ParallelMethod.cpp \
-	ParallelObject.cpp \
 	controller_func.cpp \
 	worker_func.cpp \
 	worker_internal.cpp \

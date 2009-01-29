@@ -52,7 +52,7 @@ PMI_REGISTER_METHOD_SPMD("getMessage", HelloWorld, getMessage, const string);
 
 // define the parallel proxy class
 class PHelloWorld 
-  : public pmi::ParallelObject<HelloWorld> {
+  : public pmi::ParallelClass<HelloWorld> {
 public:
   // define its methods
   PMI_PARALLEL_PROXY_METHOD_VOID(printMessage);
