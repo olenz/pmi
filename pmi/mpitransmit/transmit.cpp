@@ -30,13 +30,6 @@ const unsigned int CMD_INVOKE = 4;
 const unsigned int CMD_DESTROY = 5;
 const unsigned int CMD_BROADCAST_OBJECT = 6;
 
-//////////////////////////////////////////////////
-// Status definition
-//////////////////////////////////////////////////
-const unsigned short STATUS_OK = 0;
-const unsigned short STATUS_USER_ERROR = 1;
-const unsigned short STATUS_INTERNAL_ERROR = 2;
-const unsigned short STATUS_OTHER_ERROR = 3;
 
 //////////////////////////////////////////////////
 // Broadcasts
@@ -96,16 +89,13 @@ gatherStatus() {
       string what = s;
       switch (allStatus[i]) {
       case STATUS_USER_ERROR:
-	PMI_USER_ERROR(what);
+	PMI_THROW_USER_ERROR(what);
       case STATUS_INTERNAL_ERROR:
-	PMI_INTL_ERROR(what);
+	PMI_THROW_INTL_ERROR(what);
       case STATUS_OTHER_ERROR:
-	PMI_INTL_ERROR("other error: " << what);
+	PMI_THROW_INTL_ERROR("other error: " << what);
       default:
-	ostringstream ost; 
-	ost << "unknown status: " << what;
-	LOG4ESPP_FATAL(mpilogger, ost.str());
-	throw InternalError(ost.str());
+	PMI_THROW_INTL_ERROR("unknown status: " << what);
       }
     }
   }
@@ -200,6 +190,7 @@ receiveName(const unsigned int length) {
 
 #ifndef PMI_OPTIMIZE
 void
+pmi::transmit::
 reportOk() {
   LOG4ESPP_INFO(mpilogger, printWorkerId()		\
 		<< "reports status OK.");
@@ -208,7 +199,8 @@ reportOk() {
 }
 
 void
-reportError(const unsigned char status, const string &what) {
+pmi::transmit::
+reportError(unsigned char status, const string &what) {
   LOG4ESPP_INFO(mpilogger, printWorkerId()		\
 		<< "reports error status " << status << ".");
   MPI::COMM_WORLD.Gather(&status, 1, MPI::UNSIGNED_SHORT, 
@@ -233,58 +225,39 @@ handleNext() {
 		 << msg[3] << ")"					\
 		 );
 
+  switch (msg[0]) {
+  case CMD_END:
 #ifndef PMI_OPTIMIZE
-  try {
+    PMI_REPORT_OK;
 #endif
-    switch (msg[0]) {
-    case CMD_END:
-      break;
-    case CMD_ASSOC_CLASS:
-      name = receiveName(msg[3]);
-      pmi::worker::associateClass(name, msg[1]);
-      break;
-    case CMD_ASSOC_METHOD:
-      name = receiveName(msg[3]);
-      worker::associateMethod(name, msg[2]);
-      break;
-    case CMD_CREATE:
-      worker::create(msg[1], msg[3]);
-      break;
-    case CMD_INVOKE:
-      worker::invoke(msg[1], msg[2], msg[3]);
-      break;
-    case CMD_DESTROY:
-      worker::destroy(msg[1], msg[3]);
-      break;
-    case CMD_BROADCAST_OBJECT:
-      {
-	ostringstream ost; 
-	ost << printWorkerId()
-	    << " cannot handle broadcast object command in main loop (" 
-	    << msg[1] << ", " << msg[3] << ").";
-	LOG4ESPP_FATAL(mpilogger, ost.str());
-	throw UserError(ost.str());
-      }
-      break;
-    default:
-      ostringstream ost; 
-      ost << printWorkerId()
-	  << " cannot handle unknown command code "
-	  << msg[0] << ".";
-      LOG4ESPP_FATAL(mpilogger, ost.str());
-      throw InternalError(ost.str());
-    }
-#ifndef PMI_OPTIMIZE
-  } catch (UserError &er) {
-    reportError(STATUS_USER_ERROR, er.what());
-  } catch (InternalError &er) {
-    reportError(STATUS_INTERNAL_ERROR, er.what());
-  } catch (exception &er) {
-    reportError(STATUS_OTHER_ERROR, er.what());
+    break;
+  case CMD_ASSOC_CLASS:
+    name = receiveName(msg[3]);
+    pmi::worker::associateClass(name, msg[1]);
+    break;
+  case CMD_ASSOC_METHOD:
+    name = receiveName(msg[3]);
+    worker::associateMethod(name, msg[2]);
+    break;
+  case CMD_CREATE:
+    worker::create(msg[1], msg[3]);
+    break;
+  case CMD_INVOKE:
+    worker::invoke(msg[1], msg[2], msg[3]);
+    break;
+  case CMD_DESTROY:
+    worker::destroy(msg[1], msg[3]);
+    break;
+  case CMD_BROADCAST_OBJECT:
+    PMI_REPORT_USER_ERROR(printWorkerId()				\
+			  << " cannot handle broadcast object command in main loop (" \
+			  << msg[1] << ", " << msg[3] << ").");
+    break;
+  default:
+    PMI_REPORT_INTL_ERROR(printWorkerId()				\
+			  << " cannot handle unknown command code "	\
+			  << msg[0] << "." );
   }
-
-  reportOk();
-#endif
 
   return msg[0] != CMD_END;
 }

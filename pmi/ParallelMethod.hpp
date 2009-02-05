@@ -11,14 +11,11 @@
 
 using namespace std;
 
-// macro to register a class
-#define PMI_REGISTER_METHOD_SPMD(name, aClass, aMethod, returnType)		\
+// macro to register a method
+#define PMI_REGISTER_METHOD(name, aClass, aMethod)			\
   template <>								\
-  string pmi::ParallelMethod<aClass, returnType, &aClass::aMethod>::MNAME = \
-    pmi::ParallelMethod<aClass, returnType, &aClass::aMethod>::registerMethod(name);
-
-#define PMI_REGISTER_METHOD_VOID(name, aClass, aMethod) \
-  PMI_REGISTER_METHOD_SPMD(name, aClass, aMethod, void)
+  string pmi::ParallelMethod<aClass, &aClass::aMethod>::MNAME = \
+    pmi::ParallelMethod<aClass, &aClass::aMethod>::registerMethod(name);
 
 // #ifdef WORKER
 // #define PMI_REGISTER_METHOD(name, aClass, aMethodController, aMethodWorker, returnType) \
@@ -29,7 +26,7 @@ using namespace std;
 namespace pmi { 
   IdType generateMethodId();
 
-  template < class T, class returnType, returnType (T::*method)() >
+  template < class T, void (T::*method)() >
   class ParallelMethod {
   public:
 #ifdef CONTROLLER
@@ -45,7 +42,7 @@ namespace pmi {
     static string registerMethod(const string &_name) {
       string name = ParallelClass<T>::getName() + "::" +_name + "()";
 #ifdef WORKER
-      methodCallersByName()[name] = methodCallerTemplate<T, returnType, method>;
+      methodCallersByName()[name] = methodCallerTemplate<T, method>;
 #endif
       return name;
     }
@@ -72,8 +69,8 @@ namespace pmi {
 
 #ifdef CONTROLLER
   // Initialize MID
-  template < class T, class returnType, returnType (T::*method)() >
-  IdType ParallelMethod<T, returnType, method>::MID = NOT_ASSOCIATED;
+  template < class T, void (T::*method)() >
+  IdType ParallelMethod<T, method>::MID = NOT_ASSOCIATED;
 
   // MNAME is not initialized: it has to be initialized when the method
   // is registered. Use PMI_REGISTER_METHOD for that purpose.

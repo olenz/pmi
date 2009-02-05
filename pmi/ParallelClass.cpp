@@ -5,7 +5,7 @@ using namespace std;
 using namespace pmi;
 
 namespace pmi {
-  IdType generateClassId() {
+  IdType _generateClassId() {
     static IdType nextClassId = 0;
     nextClassId++;
     return nextClassId - 1;
@@ -15,7 +15,7 @@ namespace pmi {
   set<IdType> freeObjectIds;
 
   IdType 
-  generateObjectId() {
+  _generateObjectId() {
     static IdType nextObjectId = 0;
     if (freeObjectIds.empty()) {
       nextObjectId++;
@@ -28,11 +28,11 @@ namespace pmi {
   }
   
   void 
-  freeObjectId(const IdType id) {
+  _freeObjectId(const IdType id) {
 #ifndef PMI_OPTIMIZE
     if (freeObjectIds.find(id) != freeObjectIds.end())
-      PMI_INTL_ERROR("Controller tried to free object id "	\
-		     << id << " that is already free!");
+      PMI_THROW_INTL_ERROR("Controller tried to free object id "	\
+			   << id << " that is already free!");
 #endif
     freeObjectIds.insert(id);
   }

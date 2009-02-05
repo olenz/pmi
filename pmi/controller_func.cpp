@@ -16,7 +16,7 @@ pmi::isWorkersActive() { return workersActive; }
 void 
 pmi::endWorkers() {
   if (isWorker())
-    PMI_USER_ERROR(printWorkerId() << "tries to end workers.");
+    PMI_THROW_USER_ERROR(printWorkerId() << "tries to end workers.");
   LOG4ESPP_INFO(logger, "Controller ends all workers.");
   transmit::endWorkers();
   workersActive = false;

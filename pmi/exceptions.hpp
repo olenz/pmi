@@ -8,14 +8,49 @@
 
 using namespace std;
 
-#define PMI_INTL_ERROR(output)			\
+#ifndef PMI_OPTIMIZE
+#define PMI_REPORT_INTL_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+    pmi::transmit::reportError(pmi::transmit::STATUS_INTERNAL_ERROR, ost.str()); \
+  }
+
+#define PMI_REPORT_USER_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+    pmi::transmit::reportError(pmi::transmit::STATUS_USER_ERROR, ost.str()); \
+  }
+
+#define PMI_REPORT_OK pmi::transmit::reportOk()
+
+#else
+
+#define PMI_REPORT_INTL_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+  }
+
+#define PMI_REPORT_USER_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+  }
+
+#define PMI_REPORT_OK
+
+#endif
+
+#define PMI_THROW_INTL_ERROR(output)		\
   {						\
     ostringstream ost; ost << output;		\
     LOG4ESPP_FATAL(logger, ost.str());		\
     throw InternalError(ost.str());		\
   }
 
-#define PMI_USER_ERROR(output)			\
+#define PMI_THROW_USER_ERROR(output)		\
   {						\
     ostringstream ost; ost << output;		\
     LOG4ESPP_FATAL(logger, ost.str());		\

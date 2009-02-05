@@ -12,7 +12,17 @@ namespace pmi {
   // 0 is the controller
   WorkerIdType getWorkerId();
     
+
   namespace transmit {
+    //////////////////////////////////////////////////
+    // Status definition
+    //////////////////////////////////////////////////
+    const unsigned short STATUS_OK = 0;
+    const unsigned short STATUS_USER_ERROR = 1;
+    const unsigned short STATUS_INTERNAL_ERROR = 2;
+    const unsigned short STATUS_OTHER_ERROR = 3;
+    
+
 #ifdef CONTROLLER
     void endWorkers();
 
@@ -37,6 +47,9 @@ namespace pmi {
 #endif
 
 #ifdef WORKER
+    void reportOk();
+    void reportError(unsigned char status, const string &what);
+
     // receive the next command from the controller and execute it
     // returns false if the stop worker command was received, true otherwise
     bool handleNext();

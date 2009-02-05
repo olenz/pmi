@@ -3,6 +3,7 @@
 
 #include "pmi/types.hpp"
 
+
 #ifdef CONTROLLER
 namespace pmi {
   bool isWorkersActive();
