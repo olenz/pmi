@@ -1,14 +1,11 @@
 pkginclude_HEADERS = \
 	types.hpp \
 	transmit.hpp \
-	basic_func.hpp \
+	internal_func.hpp \
+	functions.hpp \
 	exceptions.hpp \
 	ParallelMethod.hpp \
 	ParallelClass.hpp \
-	controller_func.hpp \
-	worker_func.hpp \
-	controller.hpp \
-	worker.hpp \
 	pmi.hpp
 
 noinst_HEADERS = \
@@ -17,12 +14,11 @@ noinst_HEADERS = \
 lib_LTLIBRARIES = libpmi.la 
 libpmi_la_SOURCES = \
 	types.cpp \
-	basic_func.cpp \
+	internal_func.cpp \
+	functions.cpp \
 	exceptions.cpp \
 	ParallelClass.cpp \
 	ParallelMethod.cpp \
-	controller_func.cpp \
-	worker_func.cpp \
 	worker_internal.cpp \
 	mpitransmit/transmit.cpp
 

@@ -35,8 +35,8 @@ public:
   // parallel version
   PMI_CREATE_SPMD_METHOD(printMessage, _printMessage);
 
-  // Additional example: function that returns its message to the
-  // controller. The controller prints the message. SPMD style.
+  // Function that returns its message to the controller. The
+  // controller prints the message. SPMD style. 
   void _printMessage2() {
     unsigned short myMsg = computeMessage();
 
@@ -61,9 +61,14 @@ public:
 
   PMI_CREATE_SPMD_METHOD(printMessage2, _printMessage2);
 
-  void printMessage3() {
+  // Function that returns the message. This function actually
+  // requires the definition of two functions, one of which is called
+  // on the controller, and the other one on the worker.
+  // Note, that the worker function does not have any input arguments
+  // nor does it return anything - all communication is done via MPI.
+  string getMessage() {
     // invoke the parallel method
-    invoke<&HelloWorld::printMessage3Worker>();
+    invoke<&HelloWorld::getMessageWorker>();
 
     // compute the message
     unsigned short myMsg = computeMessage();
@@ -75,13 +80,14 @@ public:
 			   allMsg, 1, MPI::UNSIGNED_SHORT, 0);
     // compose and print the message
     ostringstream ost;
-    ost << "printMessage3(): Got \"Hello World\" from workers: " << allMsg[0];
+    ost << "getMessage(): Got \"Hello World\" from workers: " << allMsg[0];
     for (int i = 1; i < size; i++)
       ost << ", " << allMsg[i];
-    cout << ost.str() << endl;
+    return ost.str();
   }
 
-  void printMessage3Worker() {
+  // The worker function.
+  void getMessageWorker() {
     // compute the message
     unsigned short myMsg = computeMessage();
     
@@ -96,7 +102,7 @@ public:
 PMI_REGISTER_CLASS("HelloWorld", HelloWorld);
 PMI_REGISTER_METHOD("_printMessage", HelloWorld, _printMessage);
 PMI_REGISTER_METHOD("_printMessage2", HelloWorld, _printMessage2);
-PMI_REGISTER_METHOD("printMessage3Worker", HelloWorld, printMessage3Worker);
+PMI_REGISTER_METHOD("getMessageWorker", HelloWorld, getMessageWorker);
 
 int main(int argc, char* argv[]) {
   // Required by MPI
@@ -112,12 +118,8 @@ int main(int argc, char* argv[]) {
     // Call both void methods of the object
     hello.printMessage();
     hello.printMessage2();
-    hello.printMessage3();
 
-    // Call the returning method of the object
-//     string s = 
-//       hello.invoke<const string, &HelloWorld::getMessage>();
-//     cout << s << endl;
+    cout << hello.getMessage() << endl;
 
     // Stop the workers
     pmi::endWorkers();

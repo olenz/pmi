@@ -1,20 +1,11 @@
 #ifndef _PMI_PARALLELMETHOD_HPP
 #define _PMI_PARALLELMETHOD_HPP
-#include "pmi/types.hpp"
-#include "pmi/transmit.hpp"
-#include "pmi/exceptions.hpp"
 #include "pmi/ParallelClass.hpp"
-
-#ifdef WORKER
-#include "pmi/worker_func.hpp"
-#endif
-
-using namespace std;
 
 // macro to register a method
 #define PMI_REGISTER_METHOD(name, aClass, aMethod)			\
   template <>								\
-  string pmi::ParallelMethod<aClass, &aClass::aMethod>::MNAME = \
+  std::string pmi::ParallelMethod<aClass, &aClass::aMethod>::MNAME =	\
     pmi::ParallelMethod<aClass, &aClass::aMethod>::registerMethod(name);
 
 // #ifdef WORKER
@@ -29,25 +20,20 @@ namespace pmi {
   template < class T, void (T::*method)() >
   class ParallelMethod {
   public:
-#ifdef CONTROLLER
     // store the name of the method
     static string MNAME;
 
     // store the Id of the method
     static IdType MID;
-#endif
 
     // register the method
     // this is typically called statically
     static string registerMethod(const string &_name) {
       string name = ParallelClass<T>::getName() + "::" +_name + "()";
-#ifdef WORKER
       methodCallersByName()[name] = methodCallerTemplate<T, method>;
-#endif
       return name;
     }
 
-#ifdef CONTROLLER
     static const string &getName() { return MNAME; }
     //    static IdType &getId() { return MID; }
     
@@ -64,10 +50,8 @@ namespace pmi {
       }
       return MID;
     }
-#endif
   };
 
-#ifdef CONTROLLER
   // Initialize MID
   template < class T, void (T::*method)() >
   IdType ParallelMethod<T, method>::MID = NOT_ASSOCIATED;
@@ -76,6 +60,5 @@ namespace pmi {
   // is registered. Use PMI_REGISTER_METHOD for that purpose.
 
 }
-#endif
 
 #endif

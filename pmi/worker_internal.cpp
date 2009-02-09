@@ -1,23 +1,54 @@
 #include "pmi/worker_internal.hpp"
 
-#ifdef WORKER
-
 #include <vector>
 #include "pmi/exceptions.hpp"
-#include "pmi/basic_func.hpp"
-#include "pmi/worker_func.hpp"
 #include "pmi/transmit.hpp"
+#include "pmi/functions.hpp"
 
 using namespace pmi;
 using namespace std;
 
+// Define some simplified error reporting macros
+#ifndef PMI_OPTIMIZE
+#define PMI_REPORT_INTL_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+    pmi::transmit::reportInternalError(ost.str()); \
+  }
+
+#define PMI_REPORT_USER_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+    pmi::transmit::reportUserError(ost.str()); \
+  }
+
+#define PMI_REPORT_OK pmi::transmit::reportOk()
+
+#else
+
+#define PMI_REPORT_INTL_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+  }
+
+#define PMI_REPORT_USER_ERROR(output)		\
+  {						\
+    ostringstream ost; ost << output;		\
+    LOG4ESPP_FATAL(logger, ost.str());					\
+  }
+
+#define PMI_REPORT_OK
+
+#endif
 
 namespace pmi {
   namespace worker {
     vector<ConstructorCallerType> constructorCallers;
     vector<MethodCallerType> methodCallers;
     vector<DestructorCallerType> destructorCallers;
-    vector<void*> objects;
 
     void associateClass(const string &name, const IdType id) {
       if (constructorCallersByName().find(name) == 
@@ -28,7 +59,7 @@ namespace pmi {
 #ifndef PMI_OPTIMIZE
       if (destructorCallersByName().find(name) == destructorCallersByName().end())
 	PMI_REPORT_INTL_ERROR(printWorkerId()					\
-		       << "has not registered class \"" << name		\
+			      << "has not registered class \"" << name	\
 		       << "\" (constructur defined, but destructor undefined).");
       // check whether the vector has the right size
       if (constructorCallers.size() != id)
@@ -168,4 +199,3 @@ namespace pmi {
     }
   }
 }
-#endif /* WORKER */

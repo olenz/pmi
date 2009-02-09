@@ -1,4 +1,4 @@
-AC_INIT([pmi],[0.9])
+AC_INIT([pmi],[1.0a])
 
 AC_CONFIG_MACRO_DIR(build-aux/macros)
 AC_CONFIG_AUX_DIR(build-aux)

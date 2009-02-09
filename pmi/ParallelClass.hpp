@@ -1,13 +1,6 @@
 #ifndef _PMI_PARALLELCLASS_HPP
 #define _PMI_PARALLELCLASS_HPP
-#include "pmi/types.hpp"
-#include "pmi/transmit.hpp"
-#include "pmi/exceptions.hpp"
-#include "pmi/controller_func.hpp"
-
-#ifdef WORKER
-#include "pmi/worker_func.hpp"
-#endif
+#include "pmi/functions.hpp"
 
 #include <iostream>
 
@@ -36,41 +29,36 @@ namespace pmi {
   void _freeObjectId(const IdType id);
   template <typename T>
   const string &_registerClass(const string &name) {
-#ifdef WORKER
     // register constructorCaller with name
     constructorCallersByName()[name] = constructorCallerTemplate<T>;
     // register destructorCaller with name
     destructorCallersByName()[name] = destructorCallerTemplate<T>;
-#endif
     return name;
   }
 
   // The ParallelClass template represents a parallel version of the
   // parameter class T (called the "subject class").
   // Each member function of the subject class can be invoked in
-  // parallel via "invoke" or "invokeVoid".
+  // parallel via "invoke"
   template < class T >
   class ParallelClass {
   public:
     typedef T SubjectClass;
 
   private:
-#ifdef CONTROLLER
     // store the name of the class
     static string CNAME;
 
     // store the Id of the class
     static IdType CID;
-#endif
 
     // store the Id of the object instance
     IdType OID;
 
   public:
-#ifdef CONTROLLER
     // returns the name of the class
     static const string &getName() { return CNAME; }
-#endif
+    IdType getObjectId() const { return OID; }
 
     // The constructor of the class: create an instance of the parallel object
     ParallelClass() {
@@ -169,13 +157,11 @@ namespace pmi {
     }
   };
 
-#ifdef CONTROLLER
   // Initialize class ID
   template < class T >
   IdType ParallelClass<T>::CID = NOT_ASSOCIATED;
   // CNAME is not initialized: it has to be initialized when the class
   // is registered. Use PMI_REGISTER_CLASS for that purpose.
-#endif
 }
 
 #endif
