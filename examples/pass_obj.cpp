@@ -1,5 +1,7 @@
 // Basic example for passing PMI object (references) via PMI.
 //
+// Demonstrates, how a method can be passed a reference to another PMI
+// object.
 //
 // Execute via:
 //
@@ -13,7 +15,9 @@
 using namespace std;
 
 // Simple class that "computes a message" (actually, it only returns
-// the MPI thread, but the principle is sound, eh?)
+// the MPI thread, but the principle is sound, eh?). The class does
+// not have any parallel methods by itseld, but as it should be passed
+// to the class B, it does have to be registered.
 class A 
   : public pmi::ParallelClass<A> 
 {
@@ -25,16 +29,17 @@ public:
 
 PMI_REGISTER_CLASS("A", A);
 
+// This class has an A class member. As A and B are parallel classes
 class B 
-  : public pmi::ParallelClass<B> 
 {
+  pmi::ParallelClass<B> pclass;
 
   A *a;
 
 public:
   void setA(A& _a) {
     // invoke setAWorker in parallel
-    invoke<&B::setAWorker>();
+    pclass.invoke<&B::setAWorker>();
 
     // broadcast object "a"
     pmi::broadcastObject(_a);
@@ -50,7 +55,7 @@ public:
 
   std::string getMessage() {
     // invoke the parallel method
-    invoke<&B::getMessageWorker>();
+    pclass.invoke<&B::getMessageWorker>();
 
     // compute the message
     unsigned short myMsg = _getMessage();
@@ -92,14 +97,14 @@ int main(int argc, char* argv[]) {
   // Required by the logging system
   LOG4ESPP_CONFIGURE();
 
-  // mainLoop will return "false" only on the controller
-  if (!pmi::mainLoop()) {
+  if (pmi::isWorker()) pmi::mainLoop();
+  else {
     A a;
     B b;
     
     b.setA(a);
     cout << b.getMessage() << endl;
-
+    
     // Stop the workers
     pmi::endWorkers();
   } 
