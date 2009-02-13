@@ -23,18 +23,18 @@ protected:
   }
 
 public:
-  void _printMessage() {
+  void printMessageLocal() {
     cout << "A::printMessage(): Worker " << computeMessage()
 	 << ": Hello World!" 
 	 << endl;
   }
 
-  PMI_CREATE_SPMD_METHOD(printMessage, A, _printMessage, pclass);
+  PMI_CREATE_SPMD_METHOD(printMessage, A, printMessageLocal, pclass);
 };
 
 // Register the class with PMI
 PMI_REGISTER_CLASS("A", A);
-PMI_REGISTER_METHOD("_printMessage", A, _printMessage);
+PMI_REGISTER_METHOD("printMessageLocal", A, printMessageLocal);
 
 
 // Define am simple class B that is derived from A
@@ -42,19 +42,19 @@ class B : public A {
   pmi::ParallelClass<B> pclass;
 
 public:
-  void _printMessage() {
+  void printMessageLocal() {
     cout << "B::printMessage(): Worker " << computeMessage()
 	 << ": Hello World!" 
 	 << endl;
   }
 
-  PMI_CREATE_SPMD_METHOD(printMessage, B, _printMessage, pclass);
+  PMI_CREATE_SPMD_METHOD(printMessage, B, printMessageLocal, pclass);
 
 };
 
 // Register the class with PMI
 PMI_REGISTER_CLASS("B", B);
-PMI_REGISTER_METHOD("_printMessage", B, _printMessage);
+PMI_REGISTER_METHOD("printMessageLocal", B, printMessageLocal);
 
 int main(int argc, char* argv[]) {
   // Required by MPI

@@ -17,12 +17,7 @@ using namespace std;
 class HelloWorld {
 private:
   // The class contains an instance of the parallel class as a member.
-  pmi::ParallelClass<HelloWorld> pclass;
-
-  // Define a simple method that does some "computing".
-  unsigned short computeMessage() {
-    return pmi::getWorkerId();
-  }
+  pmi::ParallelClass<HelloWorld> pmiObject;
 
 public:
   // BASIC PARALLEL METHOD DEFINITION
@@ -41,16 +36,17 @@ public:
   // The controller method
   string getMessage() {
     // invoke the method on the workers
-    pclass.invoke<&HelloWorld::getMessageWorker>();
+    pmiObject.invoke<&HelloWorld::getMessageWorker>();
 
     // compute the message (does the common computation)
-    unsigned short myMsg = computeMessage();
+    unsigned short myMsg = getMessageLocal();
 
     // gather the messages from the different workers
     int size = MPI::COMM_WORLD.Get_size();
     unsigned short allMsg[size];
     MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT,
-			   allMsg, 1, MPI::UNSIGNED_SHORT, 0);
+			   allMsg, 1, MPI::UNSIGNED_SHORT, 
+			   pmi::getControllerMPIRank());
     // compose and return the message
     ostringstream ost;
     ost << "getMessage(): Got \"Hello World\" from workers: " << allMsg[0];
@@ -62,14 +58,19 @@ public:
   // The worker method. This is called on all workers.
   void getMessageWorker() {
     // compute the message
-    unsigned short myMsg = computeMessage();
+    unsigned short myMsg = getMessageLocal();
     
     // send the message to the controller
     MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT, 
-			   0, 0, MPI::UNSIGNED_SHORT, 0);
+			   0, 0, MPI::UNSIGNED_SHORT, 
+			   pmi::getControllerMPIRank());
     
   }
 
+  // Define a simple method that does some "computing".
+  unsigned short getMessageLocal() {
+    return pmi::getWorkerId();
+  }
 
   // SPMD STYLE PARALLEL METHOD DEFINITION
   
@@ -78,19 +79,21 @@ public:
   // much simpler: just define a single method that does all the work,
   // but distinguishes between controller and worker, and use the
   // macro PMI_CREATE_SPMD_METHOD to define an SPMD method from that.
-  void _printMessage() {
-    unsigned short myMsg = computeMessage();
+  void printMessageLocal() {
+    unsigned short myMsg = pmi::getWorkerId();
 
-    if (pmi::isWorker()) {
+    if (!pmi::isController()) {
       // send the Id to the MPI task 0
       MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT, 
-			     0, 0, MPI::UNSIGNED_SHORT, 0);
+			     0, 0, MPI::UNSIGNED_SHORT, 
+			     pmi::getControllerMPIRank());
     } else {
       // gather the Ids
       int size = MPI::COMM_WORLD.Get_size();
       unsigned short allMsg[size];
       MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT,
-			     allMsg, 1, MPI::UNSIGNED_SHORT, 0);
+			     allMsg, 1, MPI::UNSIGNED_SHORT, 
+			     pmi::getControllerMPIRank());
       // compose the message
       ostringstream ost;
       ost << "printeMessage(): Got \"Hello World\" from workers: " << allMsg[0];
@@ -100,17 +103,19 @@ public:
     }
   }
 
-  // This defines a method printMessage that calls _printMessage on
+  // This defines a method printMessage that calls printMessageLocal on
   // all workers and on the controller.
-  PMI_CREATE_SPMD_METHOD(printMessage, HelloWorld, _printMessage, pclass);
+  PMI_CREATE_SPMD_METHOD(printMessage, HelloWorld, printMessageLocal, pmiObject);
 
 };
 
+#ifdef HAVE_MPI
 // Finally, the class and methods have to be registered with PMI
 // outside of the class scope.
 PMI_REGISTER_CLASS("HelloWorld", HelloWorld);
-PMI_REGISTER_METHOD("_printMessage", HelloWorld, _printMessage);
 PMI_REGISTER_METHOD("getMessageWorker", HelloWorld, getMessageWorker);
+PMI_REGISTER_METHOD("printMessageLocal", HelloWorld, printMessageLocal);
+#endif
 
 int main(int argc, char* argv[]) {
   // Required by MPI

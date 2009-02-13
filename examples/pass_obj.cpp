@@ -18,10 +18,10 @@ using namespace std;
 // the MPI thread, but the principle is sound, eh?). The class does
 // not have any parallel methods by itseld, but as it should be passed
 // to the class B, it does have to be registered.
-class A 
-  : public pmi::ParallelClass<A> 
-{
+class A {
 public:
+  pmi::ParallelClass<A> pmiObject;
+
   unsigned short computeMessage() { 
     return pmi::getWorkerId();
   }
@@ -32,17 +32,19 @@ PMI_REGISTER_CLASS("A", A);
 // This class has an A class member. As A and B are parallel classes
 class B 
 {
-  pmi::ParallelClass<B> pclass;
+  pmi::ParallelClass<B> pmiObject;
 
   A *a;
 
 public:
+  B() { a = 0; }
+
   void setA(A& _a) {
     // invoke setAWorker in parallel
-    pclass.invoke<&B::setAWorker>();
+    pmiObject.invoke<&B::setAWorker>();
 
     // broadcast object "a"
-    pmi::broadcastObject(_a);
+    pmi::broadcastPMIObject(_a.pmiObject);
 
     // set the local copy
     a = &_a;
@@ -50,21 +52,25 @@ public:
 
   void setAWorker() {
     // receive object "a"
-    a = pmi::receiveObjectPtr<A>();
+    a = pmi::receivePMIObjectPtr<A>();
+
+    // MPI::bcast(&oid);
+    // a = getObjectPtr<A>(oid);
   }
 
   std::string getMessage() {
     // invoke the parallel method
-    pclass.invoke<&B::getMessageWorker>();
+    pmiObject.invoke<&B::getMessageWorker>();
 
     // compute the message
-    unsigned short myMsg = _getMessage();
+    unsigned short myMsg = getMessageLocal();
 
     // gather the messages from the different workers
     int size = MPI::COMM_WORLD.Get_size();
     unsigned short allMsg[size];
     MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT,
-			   allMsg, 1, MPI::UNSIGNED_SHORT, 0);
+			   allMsg, 1, MPI::UNSIGNED_SHORT, 
+			   pmi::getControllerMPIRank());
     // compose and print the message
     ostringstream ost;
     ost << "getMessage(): Got \"Hello World\" from workers: " << allMsg[0];
@@ -75,14 +81,15 @@ public:
 
   void getMessageWorker() {
     // compute the message
-    unsigned short myMsg = _getMessage();
+    unsigned short myMsg = getMessageLocal();
 
     // send the message to the controller
     MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT, 
-			   0, 0, MPI::UNSIGNED_SHORT, 0);
+			   0, 0, MPI::UNSIGNED_SHORT,
+			   pmi::getControllerMPIRank());
   }
 
-  short unsigned _getMessage() {
+  short unsigned getMessageLocal() {
     return a->computeMessage();
   }
 };

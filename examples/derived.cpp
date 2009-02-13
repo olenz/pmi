@@ -38,7 +38,8 @@ public:
     int size = MPI::COMM_WORLD.Get_size();
     unsigned short allMsg[size];
     MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT,
-			   allMsg, 1, MPI::UNSIGNED_SHORT, 0);
+			   allMsg, 1, MPI::UNSIGNED_SHORT, 
+			   pmi::getControllerMPIRank());
     // compose and print the message
     ostringstream ost;
     ost << "getMessage(): Got \"Hello World\" from workers: " << allMsg[0];
@@ -54,24 +55,27 @@ public:
     
     // send the message to the controller
     MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT, 
-			   0, 0, MPI::UNSIGNED_SHORT, 0);
+			   0, 0, MPI::UNSIGNED_SHORT, 
+			   pmi::getControllerMPIRank());
     
   }
 
   // SPMD style
-  void _printMessage() {
+  void printMessageLocal() {
     unsigned short myMsg = computeMessage();
 
     if (pmi::isWorker()) {
       // send the Id to the MPI task 0
       MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT, 
-			     0, 0, MPI::UNSIGNED_SHORT, 0);
+			     0, 0, MPI::UNSIGNED_SHORT, 
+			     pmi::getControllerMPIRank());
     } else {
       // gather the Ids
       int size = MPI::COMM_WORLD.Get_size();
       unsigned short allMsg[size];
       MPI::COMM_WORLD.Gather(&myMsg, 1, MPI::UNSIGNED_SHORT,
-			     allMsg, 1, MPI::UNSIGNED_SHORT, 0);
+			     allMsg, 1, MPI::UNSIGNED_SHORT, 
+			     pmi::getControllerMPIRank());
       // compose the message
       ostringstream ost;
       ost << "printeMessage(): Got \"Hello World\" from workers: " << allMsg[0];
@@ -81,12 +85,12 @@ public:
     }
   }
 
-  PMI_CREATE_SPMD_METHOD(printMessage, HelloWorld, _printMessage, (*this));
+  PMI_CREATE_SPMD_METHOD(printMessage, HelloWorld, printMessageLocal, (*this));
 };
 
 // register the class and method with PMI
 PMI_REGISTER_CLASS("HelloWorld", HelloWorld);
-PMI_REGISTER_METHOD("_printMessage", HelloWorld, _printMessage);
+PMI_REGISTER_METHOD("printMessageLocal", HelloWorld, printMessageLocal);
 PMI_REGISTER_METHOD("getMessageWorker", HelloWorld, getMessageWorker);
 
 int main(int argc, char* argv[]) {
@@ -103,7 +107,6 @@ int main(int argc, char* argv[]) {
     cout << hello.getMessage() << endl;
 
     hello.printMessage();
-
 
     // Stop the workers
     pmi::endWorkers();
