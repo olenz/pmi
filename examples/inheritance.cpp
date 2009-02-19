@@ -13,6 +13,8 @@
 #include <logging/log4espp.hpp>
 #include <mpi.h>
 
+using namespace std;
+
 // Define a simple class A
 class A {
   pmi::ParallelClass<A> pclass;

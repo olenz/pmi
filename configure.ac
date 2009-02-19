@@ -30,7 +30,7 @@ else
    AXES_LOG4ESPP
 fi
 
-CPPFLAGS='-I $(top_srcdir) '"$CPPFLAGS"
+CPPFLAGS='-I $(top_srcdir) -I $(top_srcdir)/logging '"$CPPFLAGS"
 LIBS="$LOG4ESPP_LIBS $MPI_LIBS $LIBS"
 
 AC_CONFIG_HEADERS([acconfig.hpp])

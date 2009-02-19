@@ -13,6 +13,7 @@
 *  Function    : Macros for logging with log4cxx|log4cpp|default            *
 *                                                                           *
 ****************************************************************************/
+#include "acconfig.hpp"
 
 #ifndef LOG4ESPP_H
 #define LOG4ESPP_H
