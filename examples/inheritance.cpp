@@ -35,8 +35,8 @@ public:
 };
 
 // Register the class with PMI
-PMI_REGISTER_CLASS("A", A);
-PMI_REGISTER_METHOD("printMessageLocal", A, printMessageLocal);
+PMI_REGISTER_CLASS(A);
+PMI_REGISTER_METHOD(A, printMessageLocal);
 
 
 // Define am simple class B that is derived from A
@@ -55,8 +55,8 @@ public:
 };
 
 // Register the class with PMI
-PMI_REGISTER_CLASS("B", B);
-PMI_REGISTER_METHOD("printMessageLocal", B, printMessageLocal);
+PMI_REGISTER_CLASS(B);
+PMI_REGISTER_METHOD(B, printMessageLocal);
 
 int main(int argc, char* argv[]) {
   // Required by MPI

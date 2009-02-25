@@ -89,9 +89,9 @@ public:
 };
 
 // register the class and method with PMI
-PMI_REGISTER_CLASS("HelloWorld", HelloWorld);
-PMI_REGISTER_METHOD("printMessageLocal", HelloWorld, printMessageLocal);
-PMI_REGISTER_METHOD("getMessageWorker", HelloWorld, getMessageWorker);
+PMI_REGISTER_CLASS(HelloWorld);
+PMI_REGISTER_METHOD(HelloWorld, printMessageLocal);
+PMI_REGISTER_METHOD(HelloWorld, getMessageWorker);
 
 int main(int argc, char* argv[]) {
   // Required by MPI

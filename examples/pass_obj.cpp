@@ -27,7 +27,7 @@ public:
   }
 };
 
-PMI_REGISTER_CLASS("A", A);
+PMI_REGISTER_CLASS(A);
 
 // This class has an A class member. As A and B are parallel classes
 class B 
@@ -94,9 +94,9 @@ public:
   }
 };
 
-PMI_REGISTER_CLASS("B", B);
-PMI_REGISTER_METHOD("setAWorker", B, setAWorker);
-PMI_REGISTER_METHOD("getMessageWorker", B, getMessageWorker);
+PMI_REGISTER_CLASS(B);
+PMI_REGISTER_METHOD(B, setAWorker);
+PMI_REGISTER_METHOD(B, getMessageWorker);
 
 int main(int argc, char* argv[]) {
   // Required by MPI

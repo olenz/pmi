@@ -112,9 +112,9 @@ public:
 #ifdef HAVE_MPI
 // Finally, the class and methods have to be registered with PMI
 // outside of the class scope.
-PMI_REGISTER_CLASS("HelloWorld", HelloWorld);
-PMI_REGISTER_METHOD("getMessageWorker", HelloWorld, getMessageWorker);
-PMI_REGISTER_METHOD("printMessageLocal", HelloWorld, printMessageLocal);
+PMI_REGISTER_CLASS(HelloWorld);
+PMI_REGISTER_METHOD(HelloWorld, getMessageWorker);
+PMI_REGISTER_METHOD(HelloWorld, printMessageLocal);
 #endif
 
 int main(int argc, char* argv[]) {
