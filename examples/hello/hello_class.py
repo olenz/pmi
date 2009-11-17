@@ -18,17 +18,6 @@ if __name__ != 'pmi':
     hello = Hello('Olaf')
     print('\n'.join(hello()))
 
-    # create a frontend class via the proxy
-    class HelloProxy(object):
-        __metaclass__ = pmi.Proxy
-        pmiproxydefs = \
-            dict(cls = 'HelloLocal',
-                 pmiinvoke = [ '__call__' ])
-
-    # use the class
-    hello = HelloProxy('Olaf')
-    print('\n'.join(hello()))
-
 else:
     ##################################################
     ## Parallel code

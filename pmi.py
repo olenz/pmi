@@ -23,8 +23,8 @@ PMI also allows to create parallel instances of object classes via
 on all workers. `call()`, `invoke()` and `reduce()` can be used to
 call arbitrary methods of these instances.
 
-To allow importing of python modules and to execute arbitrary code on
-all workers, `exec_()` can be used.
+to execute arbitrary code on all workers, `exec_()` can be used, and
+to import python modules to all workers, use 'import_()'.
 
 Main program
 ------------
@@ -45,7 +45,7 @@ controller. A typical PMI main program looks like this:
 >>> pmi.startWorkerLoop()
 >>>
 >>> # Do the parallel computation
->>> pmi.exec_('import math')
+>>> pmi.import_('math')
 >>> pmi.reduce('lambda a,b: a+b', 'math.factorial', 42)
 >>>
 >>> # exit all workers
@@ -143,14 +143,46 @@ __all__ = [
     ]
 
 ##################################################
+## IMPORT
+##################################################
+def import_(*args) :
+    """Controller command that imports python modules on all workers.
+
+    Each element of args should be a module name that is imported to
+    all workers.
+
+    Example:
+    
+    >>> pmi.import_('hello')
+    >>> hw = pmi.create('hello.HelloWorld')
+    """
+    global inWorkerLoop
+    if isController:
+        if len(args) == 0:
+            raise UserError('pmi.import_ expects exactly 1 argument on controller!')
+            
+        # broadcast the statement
+        _broadcast(_IMPORT, *args)
+        # locally execute the statement
+        return __workerImport_(*args)
+    elif not inWorkerLoop:
+        return receive(_IMPORT)
+
+def __workerImport_(*modules) :
+    log.info("Importing modules: %s", modules)
+    statement='import ' + ', '.join(modules)
+    exec(statement, globals())
+
+##################################################
 ## EXEC
 ##################################################
 def exec_(*args) :
     """Controller command that executes arbitrary python code on all workers.
 
     exec_() allows to execute arbitrary Python code on all workers.
-    It can be used to import modules, or to define classes and
-    functions on all workers.
+    It can be used to define classes and functions on all workers.
+    Modules should not be imported via exec_(), instead import_()
+    should be used.
 
     Each element of args should be string that is executed on all
     workers.
@@ -162,7 +194,7 @@ def exec_(*args) :
     """
     if __checkController(exec_) :
         if len(args) == 0:
-            raise UserError('pmi.exec_ expects exactly 1 argument on controller!')
+            raise UserError('pmi.exec_ expects at least one argument(s) on controller!')
             
         # broadcast the statement
         _broadcast(_EXEC, *args)
@@ -177,9 +209,6 @@ def __workerExec_(*statements) :
         log.info("Executing '%s'", statement)
         exec(statement, globals())
 
-def import_(statement) :
-    """import_() is an alias for exec_()."""
-    exec_(statement)
 
 ##################################################
 ## EXECFILE
@@ -496,6 +525,8 @@ def startWorkerLoop() :
     until `stopWorkerLoop()` or `finalizeWorkers()` is called on the
     controller.
     """
+    global inWorkerLoop
+
     # On the controller, leave immediately
     if isController :
         log.info('Entering and leaving the worker loop')
@@ -661,18 +692,22 @@ class InternalError(Exception):
     """Raised when PMI has encountered an internal error.
 
     Hopefully, this exceptions is never raised."""
+    def __init__(self, msg):
+        self.msg = msg
     def __str__(self) :
-        return '%s: %s' % (WORKERSTR, str(self.args))
+        return workerStr + ': ' + self.msg
     def __repr__(self) :
-        return str(self.args)
+        return str(self)
 
 class UserError(Exception):
     """Raised when PMI has encountered a user error.
     """
+    def __init__(self, msg):
+        self.msg = msg
     def __str__(self) :
-        return '%s: %s' % (WORKERSTR, str(self.args))
+        return workerStr + ': ' + self.msg
     def __repr__(self) :
-        return str(self.args)
+        return str(self)
 
 ##################################################
 ## BROADCAST AND RECEIVE
@@ -791,8 +826,12 @@ def _checkCommand(cmd):
     return 0 <= cmd < _MAXCMD
 
 def __checkController(func) :
-    """Checks whether we are on the controller, raises a UserError if we are not.
+    """Checks whether we are on the controller, raises a UserError if
+    we are on a worker and in the worker loop.
+
+    Returns whether we are on the controller.
     """
+    global inWorkerLoop
     if isController:
         return True
     else:
@@ -988,6 +1027,7 @@ def __formatCall(function, args, kwds) :
 # map of command names and associated worker functions
 _CMD = [ 
     ('EXEC', __workerExec_),
+    ('IMPORT', __workerImport_),
     ('EXECFILE', __workerExecfile_),
     ('CREATE', __workerCreate),
     ('INVOKE', __workerInvoke),
@@ -1003,7 +1043,7 @@ _MAXCMD = len(_CMD)
 
 # define the numerical constants to be used
 for i in range(len(_CMD)) :
-    exec '_%s=%s' % (_CMD[i][0],i) in globals()
+    exec('_%s=%s' % (_CMD[i][0],i), globals())
 del i
 
 # set that stores which oids have been deleted
@@ -1142,5 +1182,4 @@ _MPIInit()
 if __name__ == 'main':
     _MPIMergeWithParent()
     startWorkerLoop()
-
 

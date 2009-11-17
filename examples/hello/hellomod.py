@@ -1,7 +1,5 @@
 import pmi
-
-if pmi.isController:
-    pmi.exec_('import hellomod')
+pmi.import_('hellomod')
 
 from mpi4py import MPI
 

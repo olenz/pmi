@@ -1,4 +1,10 @@
-import time, sys
+import time, sys, os
+import logging.config
+
+if os.path.exists('log.conf'):
+    logging.config.fileConfig("log.conf")
+else:
+    logging.basicConfig()
 
 if len(sys.argv) > 1 and sys.argv[1] == 'serial':
     from mandelbrot_serial import *

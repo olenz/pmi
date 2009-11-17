@@ -1,12 +1,13 @@
 import pmi
-if pmi.isController:
-    pmi.exec_('import mandelbrot_pmi')
+pmi.import_('mandelbrot_pmi')
 
 from mpi4py import MPI
 import numpy as np
 import time
 
 def mandelbrot_func(x, y, maxit):
+    """Computes the value of the mandelbrot set at x and y, using
+    maxit iterations as a maximum."""
     c = x + y*1j
     z = 0 + 0j
     it = 0
@@ -16,8 +17,10 @@ def mandelbrot_func(x, y, maxit):
     return it
 
 def mandelbrot_parallel((x1, y1), (x2, y2), (w, h), maxit):
+    """Computes the local lines of the mandelbrot set between (x1, y1)
+    and (x2, y2), using maximally maxit iterations for each point."""
     before = time.time()
-    
+
     ##################################################
     # initial communication
     comm = MPI.COMM_WORLD
@@ -26,14 +29,14 @@ def mandelbrot_parallel((x1, y1), (x2, y2), (w, h), maxit):
 
     rmsg = np.empty(4, dtype='f')
     imsg = np.empty(3, dtype='l')
-    
+
     if pmi.isController:
         rmsg[:] = [x1, x2, y1, y2]
         imsg[:] = [w, h, maxit]
-    
+
     comm.Bcast([rmsg, MPI.FLOAT], root=0)
     comm.Bcast([imsg, MPI.LONG], root=0)
-    
+
     x1, x2, y1, y2 = rmsg
     w, h, maxit    = imsg
 
@@ -68,13 +71,14 @@ def mandelbrot_parallel((x1, y1), (x2, y2), (w, h), maxit):
 
     ##################################################
     # gather results at root
-    counts = np.intc()
-    indices = np.intc()
-    cdata = np.intc()
     if pmi.isController:
         counts = np.empty(size, dtype='l')
         indices = np.empty(h, dtype='l')
         cdata = np.empty([h, w], dtype='l')
+    else:
+        counts = np.zeros(size, dtype='l')
+        indices = np.zeros(size, dtype='l')
+        cdata = np.zeros(size, dtype='l')
 
     comm.Gather(sendbuf=[N, MPI.LONG],
                 recvbuf=[counts, MPI.LONG],
@@ -97,6 +101,9 @@ def mandelbrot_parallel((x1, y1), (x2, y2), (w, h), maxit):
     return M
 
 def mandelbrot(c1, c2, size, maxit):
+    """Compute the mandelbrot set between c1 and c2 (both expected to be
+    pairs of float values), using maximally maxit iterations per
+    point."""
     return pmi.call('mandelbrot_pmi.mandelbrot_parallel',
                     c1, c2, size, maxit)
 

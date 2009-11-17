@@ -1,7 +1,7 @@
 import pmi
-pmi.setup()
-
 from hellomod import *
+
+pmi.setup()
 
 # No parallel code!
 res = hello('Olaf')
