@@ -145,6 +145,9 @@ The pmi module defines the following useful constants and variables:
 """
 import logging, types, sys, inspect, os
 
+__author__ = 'Olaf Lenz'
+__email__ = 'olaf at lenz dot name'
+__version__ = '1.0'
 __all__ = [
     'exec_', 'import_', 'execfile_',
     'create', 'call', 'invoke', 'reduce', 'localcall',

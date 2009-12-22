@@ -6,7 +6,7 @@ setup(name='pmi',
       author='Olaf Lenz',
       author_email='olaf@lenz.name',
       url='http://www.espresso-pp.de/projects/pmi/',
-      download_url='http://www.espresso-pp.de/frs/download.php/19/pmi-1.0.tar.gz',
+      download_url='http://www.espresso-pp.de/frs/download.php/20/pmi-1.0.tar.gz',
       keywords = ["mpi", "parallel"],
       classifiers=[
         'Development Status :: 4 - Beta',
