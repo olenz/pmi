@@ -1,0 +1,5 @@
+2009-12-22  Olaf Lenz  <olenz@qwghlm>
+
+	* Initial version 1.0 of PMI. Functionality is complete, docs
+	aren't yet.
+
