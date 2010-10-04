@@ -25,9 +25,9 @@ or pip:
 
    pip install pmi
 
-or you can download it directly from the modules homepage:
+or you can download it directly from the module's homepage:
 
-    http://www.espresso-pp.de/projects/pmi/?subpage=summary
+   http://github.com/olenz/pmi
 
 and install it using the distutils:
 
