@@ -123,6 +123,13 @@ else:
             if pmi.isController :
                 self.assertRaises(pmi.UserError, pmi.reduce, mockFunc)
 
+        def testReduceOp(self):
+            res = pmi.reduce(pmi.SUM, mockFunc)
+            if pmi.isController :
+                self.assertEqual(res, 42*pmi.size)
+            else :
+                self.assertEqual(res, None)
+
         def testFunction(self):
             res = pmi.reduce(add, mockFunc)
             if pmi.isController :

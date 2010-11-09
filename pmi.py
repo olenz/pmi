@@ -372,7 +372,7 @@ def __workerCall(function, *targs, **tkwds) :
 def localcall(*args, **kwds):
     if __checkController(localcall):
         cfunction, tfunction, args = __translateFunctionArgs(*args)
-        args, kwds = __transcendProxies(args, kwds)
+        args, kwds = __translateProxies(args, kwds)
         log.info("Calling locally: %s", __formatCall(cfunction, args, kwds))
         return cfunction(*args, **kwds)
     else:
@@ -456,7 +456,7 @@ def reduce(*args, **kwds) :
         if len(args) <= 1:
             raise UserError('pmi.reduce expects at least 2 argument on controller!')
         # handle reduceOp argument
-        creduceOp, treduceOp, args = __translateFunctionArgs(*args)
+        creduceOp, treduceOp, args = __translateReduceOpArgs(*args)
         cfunction, tfunction, args = __translateFunctionArgs(*args)
         cargs, ckwds, targs, tkwds = __translateArgs(args, kwds)
         _broadcast(_REDUCE, treduceOp, tfunction, *targs, **tkwds)
@@ -468,7 +468,7 @@ def reduce(*args, **kwds) :
         return receive(_REDUCE)
 
 def __workerReduce(reduceOp, function, *targs, **tkwds) :
-    reduceOp = __backtranslateFunctionArg(reduceOp)
+    reduceOp = __backtranslateReduceOpArg(reduceOp)
     function = __backtranslateFunctionArg(function)
     args, kwds = __backtranslateOIDs(targs, tkwds)
     log.info("Reducing: %s", __formatCall(function, args, kwds))
@@ -513,10 +513,7 @@ def __workerDump() :
 ## AUTOMATIC OBJECT DELETION
 ##################################################
 def __delete():
-    """Internal implementation of sync(). If explicit is True, it will
-    send an empty sync signal to the workers, even if no objects need
-    to be deleted.
-    """
+    """Internal implementation of sync()."""
     global DELETED_OIDS
     if len(DELETED_OIDS) > 0:
         log.debug("Got %d objects in DELETED_OIDS.", len(DELETED_OIDS))
@@ -612,27 +609,28 @@ class Proxy(type):
                 method_self.pmiobjectclassdef = self.pmiobjectclassdef
                 pmiobjectclass = _translateClass(self.pmiobjectclassdef)
                 method_self.pmiobject = create(pmiobjectclass, *args, **kwds)
+                method_self.pmiobject._pmiproxy = method_self
 
     class _LocalCaller(object):
         def __init__(self, methodName):
             self.methodName = methodName
         def __call__(self, method_self, *args, **kwds):
             method = getattr(method_self.pmiobject, self.methodName)
-            return localcall(method, *args, **kwds)
+            return _backtranslateProxy(localcall(method, *args, **kwds))
 
     class _PMICaller(object):
         def __init__(self, methodName):
             self.methodName = methodName
         def __call__(self, method_self, *args, **kwds):
             method = getattr(method_self.pmiobject, self.methodName)
-            return call(method, *args, **kwds)
+            return _backtranslateProxy(call(method, *args, **kwds))
 
     class _PMIInvoker(object):
         def __init__(self, methodName):
             self.methodName = methodName
         def __call__(self, method_self, *args, **kwds):
             method = getattr(method_self.pmiobject, self.methodName)
-            return invoke(method, *args, **kwds)
+            return map(_backtranslateProxy, invoke(method, *args, **kwds))
 
     class _PropertyLocalGetter(object):
         def __init__(self, propName):
@@ -640,7 +638,7 @@ class Proxy(type):
         def __call__(self, method_self):
             property = getattr(method_self.pmiobject.__class__, self.propName)
             getter = getattr(property, 'fget')
-            return getter(method_self.pmiobject)
+            return _backtranslateProxy(getter(method_self.pmiobject))
 
     class _PropertyPMISetter(object):
         def __init__(self, propName):
@@ -653,7 +651,7 @@ class Proxy(type):
                 (method_self.pmiobjectclassdef,
                  self.propName, 
                  'fset'))
-            return call(setter, method_self, val)
+            return _backtranslateProxy(call(setter, method_self, val))
 
     def __addMethod(cls, methodName, caller):
         newMethod = types.MethodType(caller, None, cls)
@@ -866,7 +864,7 @@ def __checkWorker(func) :
         raise UserError("Cannot call %s on the controller!" % func.__name__)
 
 def _translateClass(cls):
-    """Returns the class object of the class decscribed by cls.
+    """Returns the class object of the class described by cls.
     """
     if cls is None :
         raise UserError("pmi.create expects at least 1 argument on controller")
@@ -905,14 +903,20 @@ def _translateOID(obj) :
     else:
         return obj
 
-def _transcendProxy(obj):
+def _backtranslateProxy(obj):
+    if hasattr(obj, '_pmiproxy'):
+        return obj._pmiproxy
+    else:
+        return obj
+
+def _translateProxy(obj):
     if _isProxy(obj):
         return obj.pmiobject
     else:
         return obj
 
-def __transcendProxies(args, kwds):
-    return __mapArgs(_transcendProxy, args, kwds)
+def __translateProxies(args, kwds):
+    return __mapArgs(_translateProxy, args, kwds)
 
 def __translateOIDs(args, kwds):
     """Internal function that translates all PMI object instances that
@@ -922,7 +926,7 @@ def __translateOIDs(args, kwds):
     return __mapArgs(_translateOID, args, kwds)
 
 def __translateArgs(args, kwds):
-    args, kwds = __transcendProxies(args, kwds)
+    args, kwds = __translateProxies(args, kwds)
 
     workerKwds={}
     controllerKwds={}
@@ -970,7 +974,7 @@ def __backtranslateOIDs(targs, tkwds):
 class __Method(object) :
     def __init__(self, funcname, im_self, im_class=None):
         self.__name__ = funcname
-        self.im_self = _transcendProxy(im_self)
+        self.im_self = _translateProxy(im_self)
         if im_class is None:
             self.im_class = self.im_self.__class__
         else:
@@ -1034,6 +1038,22 @@ def __backtranslateFunctionArg(arg0):
     else:
         return arg0
 
+def __translateReduceOpArgs(*args):
+    tfunction =  _MPITranslateReduceOp(*args)
+    if tfunction is not None:
+        function = args[0]
+        rargs = args[1:]
+        return function, tfunction, rargs
+    else:
+        return __translateFunctionArgs(*args)
+
+def __backtranslateReduceOpArg(arg0):
+    function = _MPIBacktranslateReduceOp(arg0)
+    if function is not None: 
+        return function
+    else:
+        return __backtranslateFunctionArg(arg0)
+
 def __formatCall(function, args, kwds) :
     def formatArgs(args, kwds) :
         arglist = [repr(arg) for arg in args]
@@ -1075,102 +1095,91 @@ inWorkerLoop = False
 ##################################################
 ## MPI SETUP
 ##################################################
-try:
-    ##############################
-    # MPI4PY
-    from mpi4py import MPI
+from mpi4py import MPI
+from mpi4py.MPI import OP_NULL, MAX, MIN, SUM, PROD, LAND, BAND, LOR, BOR, LXOR, BXOR, MAXLOC, MINLOC, REPLACE
 
-    def _MPIInit(comm=MPI.COMM_WORLD):
-        # The communicator used by PMI
-        global _MPIcomm, CONTROLLER, rank, size, \
-            isController, isWorker, workerStr, log
-        _MPIcomm = comm
+def _MPIInit(comm=MPI.COMM_WORLD):
+    # The communicator used by PMI
+    global _MPIcomm, CONTROLLER, rank, size, \
+        isController, isWorker, workerStr, log
+    _MPIcomm = comm
 
-        CONTROLLER = 0
-        rank = _MPIcomm.rank
-        size = _MPIcomm.size
+    CONTROLLER = 0
+    rank = _MPIcomm.rank
+    size = _MPIcomm.size
 
-        # whether this is a worker or a controller
-        isController = rank == CONTROLLER
-        isWorker = not isController
+    # whether this is a worker or a controller
+    isController = rank == CONTROLLER
+    isWorker = not isController
 
-        if isController :
-            workerStr = 'Controller'
-            log = logging.getLogger('%s.controller' % __name__)
-        else :
-            workerStr = 'Worker %d' % rank
-            log = logging.getLogger('%s.worker%d' % (__name__, rank))
+    if isController :
+        workerStr = 'Controller'
+        log = logging.getLogger('%s.controller' % __name__)
+    else :
+        workerStr = 'Worker %d' % rank
+        log = logging.getLogger('%s.worker%d' % (__name__, rank))
 
-    def _MPIGather(value):
-        global CONTROLLER, _MPIcomm
-        return _MPIcomm.gather(value, root=CONTROLLER)
+def _MPIGather(value):
+    global CONTROLLER, _MPIcomm
+    return _MPIcomm.gather(value, root=CONTROLLER)
 
-    def _MPIBroadcast(value=None):
-        global CONTROLLER, _MPIcomm
-        return _MPIcomm.bcast(value, root=CONTROLLER)
+def _MPIBroadcast(value=None):
+    global CONTROLLER, _MPIcomm
+    return _MPIcomm.bcast(value, root=CONTROLLER)
 
-    def _MPIReduce(op, value):
-        global CONTROLLER, _MPIcomm
-        return _MPIcomm.reduce(value, root=CONTROLLER, op=op)
+def _MPIReduce(op, value):
+    global CONTROLLER, _MPIcomm
+    return _MPIcomm.reduce(value, root=CONTROLLER, op=op)
 
-    def _MPISpawnAndMerge(ntasks, command):
-        cmd = command[0]
-        if len(command) > 1:
-            args = command[1:]
-        else:
-            args = ()
-        intercomm = \
-            _MPIcomm.Spawn(cmd, args,
-                           maxprocs=ntasks, root=CONTROLLER)
-        newcomm = intercomm.Merge(False)
-        _MPIInit(newcomm)
+def _MPISpawnAndMerge(ntasks, command):
+    cmd = command[0]
+    if len(command) > 1:
+        args = command[1:]
+    else:
+        args = ()
+    intercomm = \
+        _MPIcomm.Spawn(cmd, args,
+                       maxprocs=ntasks, root=CONTROLLER)
+    newcomm = intercomm.Merge(False)
+    _MPIInit(newcomm)
 
-    def _MPIMergeWithParent():
-        intercomm = _MPIComm.Get_parent()
-        if intercomm == MPI.COMM_NULL: return
-        newcomm = intercomm.Merge(True)
-        _MPIInit(newcomm)
+def _MPIMergeWithParent():
+    intercomm = _MPIComm.Get_parent()
+    if intercomm == MPI.COMM_NULL: return
+    newcomm = intercomm.Merge(True)
+    _MPIInit(newcomm)
 
-except ImportError:
-    try:
-        ##############################
-        # BOOSTMPI
-        import boostmpi
-        
-        def _MPIInit(comm=boostmpi.world):
-            # The communicator used by PMI
-            global CONTROLLER, _MPIcomm, rank, size, \
-                isController, isWorker, workerStr, log
-            CONTROLLER = 0
-            _MPIcomm = comm
-            rank = _MPIcomm.rank
-            size = _MPIcomm.size
+# map of command names and associated worker functions
 
-            # whether this is a worker or a controller
-            isController = rank == CONTROLLER
-            isWorker = not isController
+_REDUCEOP = [ OP_NULL, MAX, MIN, SUM, PROD, LAND, BAND, LOR, BOR,
+    LXOR, BXOR, MAXLOC, MINLOC, REPLACE ]
 
-            if isController :
-                workerStr = 'Controller'
-                log = logging.getLogger('%s.controller' % __name__)
-            else :
-                workerStr = 'Worker %d' % rank
-                log = logging.getLogger('%s.worker%d' % (__name__, rank))
+class _ReduceOp(object):
+    def __init__(self, op):
+        self.op = op
+    def __getstate__(self):
+        i = 0
+        for op in _REDUCEOP:
+            if self.op is op:
+                return i
+            i += 1
+    def __setstate__(self, state):
+        self.op = _REDUCEOP[state]
+    def getOp(self):
+        return self.op
 
-        def _MPIGather(value):
-            global CONTROLLER, _MPIcomm
-            return _MPIcomm.gather(value, root=CONTROLLER)
+def _MPITranslateReduceOp(*args):
+    arg0 = args[0]
+    if isinstance(arg0, MPI.Op):
+        return _ReduceOp(arg0)
+    else:
+        return None
 
-        def _MPIBroadcast(value=None):
-            global CONTROLLER, _MPIcomm
-            return boostmpi.broadcast(_MPIcomm, value=value, root=CONTROLLER) 
-
-        def _MPIReduce(op, value):
-            global CONTROLLER, _MPIcomm
-            return _MPIcomm.reduce(op=op, value=value, root=CONTROLLER)
-    
-    except ImportError:
-        raise ImportError('Cannot find mpi4py or boostmpi')
+def _MPIBacktranslateReduceOp(arg0):
+    if isinstance(arg0, _ReduceOp):
+        return arg0.getOp()
+    else:
+        return None
 
 ##################################################
 ## SETUP
