@@ -12,8 +12,6 @@ Requirements
 - An MPI module: 
   - mpi4py (http://mpi4py.scipy.org/) is recommended and can be
     installed from PyPI via easy_install or pip.
-  - boostmpi (http://documen.tician.de/boostmpi/) should also work
-    fine.
 
 Installation
 ------------
