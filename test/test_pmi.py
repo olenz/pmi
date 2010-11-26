@@ -377,6 +377,7 @@ if __name__ != 'pmi':
 
     class TestProxyCreateAndDelete(unittest.TestCase):
         def testCreateandDelete(self):
+            self.assert_(not pmi.MockProxyLocal.delCalled)
             if pmi.isController:
                 obj = MockProxy()
                 self.assert_(hasattr(obj, 'pmiobject'))
